@@ -1,0 +1,40 @@
+#!/bin/sh
+
+# Any of these can be overridden in /usr/local/etc/fortress/$jailname.conf or ./$jailname.conf
+
+RELEASE=12.1-RELEASE
+DATASET=zlake/fortress
+PUBLIC_IFACE=jailiface
+#DOMAIN=jails.example.org
+
+#RESOLV_CONF=$(cat <<EOM
+#nameserver 192.168.12.1
+#EOM
+#)
+
+## The interface name inside the jail will always be e0b_$jailname
+#IFCONFIG=$(cat <<EOM
+#ifconfig_e0p_test="inet 192.168.12.129/24"
+#defaultrouter="192.168.12.1"
+#EOM
+#)
+
+MOUNT=$(cat <<EOM
+bin
+boot
+lib
+libexec
+rescue
+sbin
+etcupdate
+usr/bin
+usr/include
+usr/lib
+usr/libexec
+usr/sbin
+usr/share
+usr/src
+usr/libdata
+usr/lib32
+EOM
+)
