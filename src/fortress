@@ -13,10 +13,6 @@ if [ $? -ne 0 ]; then
 fi
 	
 
-if [ -f ./fortress.conf ]; then
-	. ./fortress.conf
-fi
-
 if [ -f /usr/local/etc/fortress.conf ]; then
 	. /usr/local/etc/fortress.conf
 fi
@@ -370,10 +366,6 @@ load_local_overrides()
 {
 	local name=${1:?jail name is required}
 	
-	if [ -f $name.conf ]; then
-		. $name.conf
-	fi
-
 	if [ -f /usr/local/etc/fortress/$name.conf ]; then
 		. /usr/local/etc/fortress/$name.conf
 	fi
