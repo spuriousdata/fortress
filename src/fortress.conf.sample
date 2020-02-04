@@ -1,11 +1,12 @@
 #!/bin/sh
 
-# Any of these can be overridden in /usr/local/etc/fortress/$jailname.conf or ./$jailname.conf
+# Any of these can be overridden in /usr/local/etc/fortress/$jailname.conf
 
 RELEASE=12.1-RELEASE
-DATASET=zlake/fortress
+DATASET=zroot/fortress
 PUBLIC_IFACE=jailiface
-#DOMAIN=jails.example.org
+
+DOMAIN=jails.example.org
 
 #RESOLV_CONF=$(cat <<EOM
 #nameserver 192.168.12.1
