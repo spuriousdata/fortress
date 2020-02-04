@@ -280,11 +280,11 @@ ip_from_rc_conf()
 	echo $IP
 }
 
+
 list()
 {
 	(echo JID IP NAME MOUNTPOINT RUNNING
-	zfs list -r -d1 -oname,mountpoint $DATASET/jails | tail -n+3 | sed "s@$DATASET/jails/@@" | while read -r name mp
-	do
+	get_jail_names mountpoint | while read -r name mp; do
 		JID=$(jls -j $name -qn jid 2>/dev/null | cut -f2 -d=)
 
 		if [ "x$JID" != "x" ]; then
