@@ -269,6 +269,14 @@ destroy()
 	fi
 }
 
+ip_from_rc_conf()
+{
+	local name=${1:?jail name is required}
+	local mp=${2:?mountpoint is required}
+	IP=$(grep e0b_$name $mp/root/etc/rc.conf | awk 'match($0, /inet [\.0-9]+/){print substr($0, RSTART+5, RLENGTH-5)}')
+	echo $IP
+}
+
 list()
 {
 	(echo JID IP NAME MOUNTPOINT RUNNING
@@ -277,17 +285,21 @@ list()
 		JID=$(jls -j $name -qn jid 2>/dev/null | cut -f2 -d=)
 
 		if [ "x$JID" != "x" ]; then
-			IP=$(jexec $name ifconfig e0b_$name | awk '/inet/{print $2}')
+			IP=$(jexec $name ifconfig e0b_$name 2>/dev/null | awk '/inet/{print $2}')
+			if [ ! -z ${IP+is_set} ]; then
+				stderr "Can't connect to jail without root, parsing rc.conf for IP"
+				_ip=$(ip_from_rc_conf $name $mp)
+				IP=${_ip:=n/a}
+			fi
 			RUNNING=yes
 		else
-			_ip=$(grep e0b_$name $mp/root/etc/rc.conf | awk 'match($0, /inet [\.0-9]+/){print substr($0, RSTART+5, RLENGTH-5)}')
+			_ip=$(ip_from_rc_conf $name $mp)
 			IP=${_ip:=n/a}
 			RUNNING=no
 			JID=n/a
 		fi
 		echo $JID $IP $name $mp $RUNNING
 	done) | column -t
-
 }
 
 start()
@@ -319,15 +331,17 @@ update()
 	CMD="/usr/sbin/freebsd-update -b $R -d $R/var/db/freebsd-update/ -f $R/etc/freebsd-update.conf --not-running-from-cron"
 
 	zfs list $ZR@pre-update >/dev/null 2>&1
-	if [ $? -eq 0 ]; then
+	ret=$?
+	if [ $ret -eq 0 ]; then
 		echo "$ZR@pre-update already exists. Delete it first."
-		exit 2
+		exit $ret
 	fi
 
 	zfs snap $ZR@pre-update
-	if [ $? -ne 0 ]; then
+	ret=$?
+	if [ $ret -ne 0 ]; then
 		echo "Error taking snapshot"
-		exit 1
+		exit $ret
 	fi
 
 	PAGER=cat $CMD fetch 
@@ -345,7 +359,6 @@ update()
 
 etcupdate()
 {
-	# This definitely doesn't do anything because etcupdate does not have access to the new stuff
 	for jail in $@
 	do
 		jexec $jail /usr/sbin/etcupdate -F -t /etcupdate/etcupdate-$RELEASE.tbz
