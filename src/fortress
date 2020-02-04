@@ -20,7 +20,7 @@ fi
 
 usage()
 {
-	stderr $0 "[setup|create|destroy|list|start|stop|restart|update|etcupdate|console]"
+	stderr $0 "[setup|create|destroy|list|start|stop|restart|startall|stopall|update|etcupdate|console]"
 }
 
 stderr()
@@ -371,49 +371,105 @@ load_local_overrides()
 	fi
 }
 
-case $1 in 
-	setup)
-		shift
-		setup $@
-		;;
-	create)
-		shift
-		create $@
-		;;
-	destroy)
-		shift
-		destroy $@
-		;;
-	list)
-		shift
-		list $@
-		;;
-	start)
-		shift
-		start $@
-		;;
-	stop)
-		shift
-		stop $@
-		;;
-	restart)
-		shift
-		stop $@
-		start $@
-		;;
-	update)
-		shift
-		update $@
-		;;
-	etcupdate)
-		shift
-		etcupdate $@
-		;;
-	console)
-		shift
-		jexec -l $1 /bin/csh
-		;;
-	*)
-		usage
-		;;
-esac
+startall()
+{
+	get_jail_names mountpoint | while read -r jail mp; do
+		if [ -f $mp/NOAUTO ]; then
+			echo "Skipping $jail because $mp/NOAUTO exists"
+			continue
+		else
+			echo "Starting $jail..."
+			start $jail
+		fi
+	done
+}
+
+get_jail_names()
+{
+	local args=""
+	if [ ! -z ${1+is_set} ]; then
+		args=",$1"
+	fi
+	zfs list -r -d1 -oname$args $DATASET/jails | tail -n+3 | sed "s@$DATASET/jails/@@"
+}
+
+stopall()
+{
+	get_jail_names | while read -r jail; do
+		jls -j $jail >/dev/null 2>&1
+		if [ $? -eq 0 ]; then
+			echo "Stopping $jail..."
+			stop $jail
+		else
+			echo "$jail not running"
+		fi
+	done
+}
+
+main()
+{
+	case $1 in 
+		-f)
+			shift
+			echo loading $1 as config
+			. $1
+			shift
+			main $@
+			;;
+		setup)
+			shift
+			setup $@
+			;;
+		create)
+			shift
+			create $@
+			;;
+		destroy)
+			shift
+			destroy $@
+			;;
+		list)
+			shift
+			list $@
+			;;
+		start)
+			shift
+			start $@
+			;;
+		startall)
+			shift
+			startall $@
+			;;
+		stopall)
+			shift
+			stopall $@
+			;;
+		stop)
+			shift
+			stop $@
+			;;
+		restart)
+			shift
+			stop $@
+			start $@
+			;;
+		update)
+			shift
+			update $@
+			;;
+		etcupdate)
+			shift
+			etcupdate $@
+			;;
+		console)
+			shift
+			jexec -l $1 /bin/csh
+			;;
+		*)
+			echo unknown command $1
+			usage
+			;;
+	esac
+}
+
+main $@
