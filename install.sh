@@ -4,7 +4,7 @@
 : ${PREFIX:=/usr/local}
 : ${STAGEPREFIX:=""}
 : ${JIBPATH:=${PREFIX}/scripts/jib}
-: ${JIBSRC:=/usr/local/share/examples/jails/jib}
+: ${JIBSRC:=/usr/share/examples/jails/jib}
 
 D=$(dirname $(realpath $0))
 INSTALLPATH=${STAGEPREFIX}${PREFIX}
