@@ -11,10 +11,20 @@ PV=$(which pv)
 if [ $? -ne 0 ]; then
 	PV=""
 fi
+
+CONFIG=/usr/local/etc/fortress.conf
+
+if [ "x$1" = "x-f" ]; then
+	CONFIG=$2
+	shift; shift
+fi
 	
 
-if [ -f /usr/local/etc/fortress.conf ]; then
-	. /usr/local/etc/fortress.conf
+if [ -f $CONFIG ]; then
+	. $CONFIG
+else
+	stderr "No configuration found. Copy $CONFIG.sample to $CONFIG and edit it before running fortress"
+	exit 1
 fi
 
 
@@ -30,14 +40,24 @@ stderr()
 
 warn()
 {
-	if [ ! -z ${NOWARN+is_set} -a $NOWARN -eq 1 ]; then
+	if [ ${NOWARN:-0} -eq 1 ]; then
 		stderr $1
 	fi
 }
 
 mp()
 {
-	zfs get -H mountpoint $1 | awk '{print $3}'
+	zfs get -H mountpoint $1 2>/dev/null | awk '{print $3}'
+}
+
+checkrc()
+{
+	rc=-1
+	eval "$*;rc=$?"
+	if [ $rc -ne 0 ]; then
+		stderr Error running $*
+		exit $rc
+	fi
 }
 
 setup()
@@ -50,7 +70,8 @@ setup()
 		read RESPONSE
 		case $RESPONSE in
 			[Yy]|[Yy][Ee][Ss])
-				zfs create -po mountpoint=/fortress $DATASET
+				stderr Creating $DATASET
+				checkrc zfs create -po mountpoint=/fortress $DATASET
 				;;
 			*)
 				exit
@@ -65,7 +86,8 @@ setup()
 	do
 		zfs list $DATASET/$F > /dev/null 2>&1
 		if [ $? -ne 0 ]; then 
-			zfs create -p $DATASET/$F
+			stderr Creating $DATASET/$F
+			checkrc zfs create -p $DATASET/$F
 		fi
 	done
 
@@ -74,8 +96,8 @@ setup()
 	for SET in $SETS
 	do
 		if [ ! -f $MP/$SET ]; then
-			echo Fetching $SET
-			fetch -o $MP/$SET $FTPHOST/$RELEASE/$SET
+			stderr Fetching $MP/$SET
+			checkrc fetch -o $MP/$SET $FTPHOST/$RELEASE/$SET
 		fi
 	done
 	
@@ -84,12 +106,14 @@ setup()
 		if [ -f $RMP/.fortress_extracted_$SET ]; then
 			continue
 		fi
-		if [ $PV = "" ]; then 
-			tar -C $RMP/root -xJf $MP/$SET
-		else
-			echo Extracting $MP/$SET in $RMP/root
-			cat $MP/$SET | $PV -s $(stat -f %z $MP/$SET) | tar -C $RMP/root -xJf-
+
+		PROGBAR="cat"
+		if [ ! -z ${PV+is_set} ]; then
+			PROGBAR="$PV -s $(stat -f %z $MP/$SET)"
 		fi
+
+		stderr Extracting $MP/$SET in $RMP/root
+		cat $MP/$SET | $PROGBAR | tar -C $RMP/root -xJf-
 		
 		touch $RMP/.fortress_extracted_$SET
 	done
@@ -99,11 +123,24 @@ setup()
 	fi
 	
 	
-	echo Checking for $RMP/root/etcupdate
+	stderr Checking for $RMP/root/etcupdate
 	if [ ! -f $RMP/root/etcupdate/etcupdate-$RELEASE.tbz ]; then
+		stderr Creating etcupdate-$RELEASE.tbz
 		mount -t devfs devfs $RMP/root/dev
 		chroot $RMP/root etcupdate build /etcupdate/etcupdate-$RELEASE.tbz
 		umount $RMP/root/dev
+	fi
+	stderr Fortress setup complete
+	touch $(mp $DATASET)/.fortress_setup_complete
+}
+
+setupcomplete()
+{
+	MP=$(mp $DATASET)
+	if [ -f $MP/.fortress_setup_complete ]; then
+		echo 1
+	else
+		echo 0
 	fi
 }
 
@@ -160,7 +197,7 @@ umount_jail()
 needsroot()
 {
 	if [ $EUID -ne 0 ]; then
-		echo "create requires root privileges"
+		stderr "Command requires root privileges"
 		exit
 	fi
 }
@@ -179,20 +216,28 @@ create()
 		return
 	fi
 	
+	echo Creating jail dataset
 	zfs create $DATASET/jails/$name
 	zfs create $DATASET/jails/$name/root
 	
 	MP=$(mp $DATASET/jails/$name)
 	
+	echo Creating jail root directories
 	for _d in $MOUNT; do
 		mkdir -p $MP/root/$_d
 	done
 	
 	RMP=$(mp $DATASET/release/$RELEASE/root)
+	echo Copying /etc
 	cd $RMP/etc && find . | cpio -dp --quiet $MP/root/etc
+
+	echo Copying /root
 	cd $RMP/root && find . | cpio -dp --quiet $MP/root/root
+
+	echo Copying /etc/localtime
 	cp /etc/localtime $MP/root/etc
 
+	echo Creating /etc/rc.conf
 	cat > $MP/root/etc/rc.conf <<EOF
 hostname=$name
 cron_flags="-J 15"
@@ -209,16 +254,19 @@ sendmail_msp_queue_enable="NO"
 syslogd_flags="-c -ss"
 EOF
 
+	echo Creating /etc/resolv.conf
 	if [ ! -z ${RESOLV_CONF+is_set} ]; then
 		cat > $MP/root/etc/resolv.conf <<EOF
 $RESOLV_CONF
 EOF
 	fi
 	
+	echo Extracting etcupdate-$RELEASE.tbz
 	mount_jail $MP/root
 	chroot $MP/root etcupdate extract -t /etcupdate/etcupdate-$RELEASE.tbz
 	umount_jail $MP/root
 
+	echo Writing jail.conf
 	cat > $MP/jail.conf <<EOF
 $name {
 	host.hostname = "\$name.$DOMAIN";
@@ -237,16 +285,19 @@ $name {
 	exec.start = "/bin/sh /etc/rc";
 	exec.stop = "/bin/sh /etc/rc.shutdown";
 	exec.consolelog = "/var/log/jail_\${name}_console.log";
-	exec.prestart += "/usr/local/scripts/jib addm \${name} $PUBLIC_IFACE";
-	exec.poststop += "/usr/local/scripts/jib destroy \${name}";
+	exec.prestart += "$JIB addm \${name} $PUBLIC_IFACE";
+	exec.poststop += "$JIB destroy \${name}";
 }
 EOF
 
+	echo Writing fstab
 	SMP=$(mp $DATASET/release/$RELEASE/root)
 	(echo "#Device Mountpoint FStype Options Dump Pass"
 	 for _d in $MOUNT; do
 		echo $SMP/$_d $MP/root/$_d nullfs ro 0 0
 	 done) | column -t > $MP/fstab
+
+	 echo Jail created
 }
 
 destroy()
@@ -257,7 +308,6 @@ destroy()
 
 	jls -j $name >/dev/null 2>&1
 	if [ $? -eq 0 ]; then
-		echo Stopping $name...
 		stop $name
 	fi
 	
@@ -305,24 +355,36 @@ list()
 	done) | column -t
 }
 
+needsjib()
+{
+	if [ ! -x $JIB ]; then
+		stderr "fortress requires $JIB to exist and be executable. If jib exists in a different location, set it in $CONFIG"
+		exit 1
+	fi
+}
+
 start()
 {
 	needsroot
+	needsjib
 
 	local name=${1:?jail name is required}
 
 	MP=$(mp $DATASET/jails/$name)
-	jail -cf $MP/jail.conf
+	echo Starting $name...
+	jail -qcf $MP/jail.conf
 }
 
 stop()
 {
 	needsroot
+	needsjib
 
 	local name=${1:?jail name is required}
 
 	MP=$(mp $DATASET/jails/$name)
-	jail -rf $MP/jail.conf $name
+	echo Stopping $name...
+	jail -qrf $MP/jail.conf $name
 }
 
 update()
@@ -336,14 +398,14 @@ update()
 	zfs list $ZR@pre-update >/dev/null 2>&1
 	ret=$?
 	if [ $ret -eq 0 ]; then
-		echo "$ZR@pre-update already exists. Delete it first."
+		stderr "$ZR@pre-update already exists. Delete it first."
 		exit $ret
 	fi
 
 	zfs snap $ZR@pre-update
 	ret=$?
 	if [ $ret -ne 0 ]; then
-		echo "Error taking snapshot"
+		stderr "Error taking snapshot"
 		exit $ret
 	fi
 
@@ -351,9 +413,9 @@ update()
 	$CMD install 
 	if [ $? -eq 0 ]; then
 		# rebuild etcupdate-$RELEASE.tbz
-		mount -t devfs devfs $R/root/dev
-		chroot $R/root etcupdate build /etcupdate/etcupdate-$RELEASE.tbz
-		umount $R/root/dev
+		mount -t devfs devfs $R/dev
+		chroot $R etcupdate build /etcupdate/etcupdate-$RELEASE.tbz
+		umount $R/dev
 		echo "Updates installed. Restart jails then run 'fortress.sh etcupdate jail1 jail2 ... jailN'"
 	else
 		echo "No updates to install"
@@ -373,8 +435,13 @@ load_local_overrides()
 {
 	local name=${1:?jail name is required}
 	
-	if [ -f /usr/local/etc/fortress/$name.conf ]; then
-		. /usr/local/etc/fortress/$name.conf
+	LCONFIG=/usr/local/etc/fortress/$name.conf
+	if [ -f $LCONFIG ]; then
+		. $LCONFIG
+	else
+		stderr Create $LCONFIG.
+		stderr It should contain zero or more overrides of variables from $CONFIG.
+		exit 1
 	fi
 }
 
@@ -382,10 +449,9 @@ startall()
 {
 	get_jail_names mountpoint | while read -r jail mp; do
 		if [ -f $mp/NOAUTO ]; then
-			echo "Skipping $jail because $mp/NOAUTO exists"
+			stderr "Skipping $jail because $mp/NOAUTO exists"
 			continue
 		else
-			echo "Starting $jail..."
 			start $jail
 		fi
 	done
@@ -405,7 +471,6 @@ stopall()
 	get_jail_names | while read -r jail; do
 		jls -j $jail >/dev/null 2>&1
 		if [ $? -eq 0 ]; then
-			echo "Stopping $jail..."
 			stop $jail
 		else
 			echo "$jail not running"
@@ -415,68 +480,70 @@ stopall()
 
 main()
 {
-	case $1 in 
-		-f)
-			shift
-			echo loading $1 as config
-			. $1
-			shift
-			main $@
-			;;
-		setup)
+	if [ $(setupcomplete) = "1" ]; then
+		case $1 in 
+			create)
+				shift
+				create $@
+				;;
+			destroy)
+				shift
+				destroy $@
+				;;
+			list)
+				shift
+				list $@
+				;;
+			start)
+				shift
+				start $@
+				;;
+			startall)
+				shift
+				startall $@
+				;;
+			stopall)
+				shift
+				stopall $@
+				;;
+			stop)
+				shift
+				stop $@
+				;;
+			restart)
+				shift
+				stop $@
+				start $@
+				;;
+			update)
+				shift
+				update $@
+				;;
+			etcupdate)
+				shift
+				etcupdate $@
+				;;
+			console)
+				shift
+				jexec -l $1 /bin/csh
+				;;
+			*)
+				if [ ! -z $1 ]; then 
+					stderr unknown command $1
+				fi
+				usage
+				;;
+		esac
+	else
+		if [ "x$1" = "xsetup" ]; then
 			shift
 			setup $@
-			;;
-		create)
-			shift
-			create $@
-			;;
-		destroy)
-			shift
-			destroy $@
-			;;
-		list)
-			shift
-			list $@
-			;;
-		start)
-			shift
-			start $@
-			;;
-		startall)
-			shift
-			startall $@
-			;;
-		stopall)
-			shift
-			stopall $@
-			;;
-		stop)
-			shift
-			stop $@
-			;;
-		restart)
-			shift
-			stop $@
-			start $@
-			;;
-		update)
-			shift
-			update $@
-			;;
-		etcupdate)
-			shift
-			etcupdate $@
-			;;
-		console)
-			shift
-			jexec -l $1 /bin/csh
-			;;
-		*)
-			echo unknown command $1
-			usage
-			;;
-	esac
+		else
+			stderr
+			stderr Configure $CONFIG then run \'$0 setup\'
+			stderr 
+		fi
+	fi
 }
 
 main $@
