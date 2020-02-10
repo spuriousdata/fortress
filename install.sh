@@ -22,7 +22,7 @@ fi
 T=$(mktemp) || exit 1
 
 install -m555 $D/src/fortress  $INSTALLPATH/sbin/fortress
-install -m555 $JIBSRC $JIBPATH
+install -m555 $JIBSRC $JIBINSTALLPATH
 sed -e "s@{{JIB}}@JIB=$JIBPATH@" < $D/src/fortress.conf.sample.tmpl > $T
 install -m644 $T $INSTALLPATH/etc/fortress.conf.sample
 rm $T
