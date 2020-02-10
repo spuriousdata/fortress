@@ -38,11 +38,11 @@ Create the file /usr/local/etc/fortress/*JAILNAME*.conf, replacing *JAILNAME* wi
 the name of your jail. The file can be empty, but you will probably want to at
 least define *IFCONFIG*. The variable *$name* will be replaced with your jail's
 name when the config is loaded into fortress. The name of the interface inside
-the jail will always be e0p_$name.::
+the jail will always be e0b_$name.::
 
     # Content of /usr/local/etc/fortress/JAILNAME.conf
     IFCONFIG=$(cat <<EOM
-    ifconfig_e0p_$name="inet 192.168.12.129/24"
+    ifconfig_e0b_$name="inet 192.168.12.129/24"
     defaultrouter="192.168.12.1"
     EOM
     )
