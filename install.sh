@@ -25,4 +25,5 @@ install -m555 $D/src/fortress  $INSTALLPATH/sbin/fortress
 install -m555 $JIBSRC $JIBINSTALLPATH
 sed -e "s@{{JIB}}@JIB=$JIBPATH@" < $D/src/fortress.conf.sample.tmpl > $T
 install -m644 $T $INSTALLPATH/etc/fortress.conf.sample
+install -m644 $D/src/SAMPLE.conf $INSTALLPATH/etc/fortress/SAMPLE.conf
 rm $T
