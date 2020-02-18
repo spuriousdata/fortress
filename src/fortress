@@ -40,7 +40,7 @@ stderr()
 
 warn()
 {
-	if [ ${NOWARN:-0} -eq 1 ]; then
+	if [ ${NOWARN:-0} -ne 1 ]; then
 		stderr $1
 	fi
 }
