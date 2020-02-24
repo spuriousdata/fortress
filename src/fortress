@@ -179,6 +179,7 @@ mount_jail()
 	
 	if [ ! -d $MP/tmp ]; then
 		mkdir $MP/tmp
+		chmod 1777 $MP/tmp
 	fi
 	mount -t tmpfs tmpfs $MP/tmp
 }
