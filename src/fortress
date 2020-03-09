@@ -3,61 +3,35 @@
 #set -x
 
 FTPHOST=http://ftp.freebsd.org/pub/FreeBSD/releases/$(uname -m)
-#SETS="base.txz lib32.txz ports.txz src.txz"
 SETS="base.txz lib32.txz src.txz"
-EUID=$(id -u)
+LIBDIR=${LIBDIR:=/usr/local/lib/fortress}
 
 PV=$(which pv)
 if [ $? -ne 0 ]; then
 	PV=""
 fi
 
-CONFIG=/usr/local/etc/fortress.conf
+INSTALL_CONFIG=/usr/local/etc/fortress.conf
+CONFIG=$INSTALL_CONFIG
 
 if [ "x$1" = "x-f" ]; then
 	CONFIG=$2
 	shift; shift
 fi
 	
-
 if [ -f $CONFIG ]; then
 	. $CONFIG
 else
-	stderr "No configuration found. Copy $CONFIG.sample to $CONFIG and edit it before running fortress"
+	# stderr is not defined yet, so we can't call it
+	echo "No configuration found. Copy $INSTALL_CONFIG.sample to $INSTALL_CONFIG and edit it before running fortress" >&2
 	exit 1
 fi
 
+. $LIBDIR/utils.sh
 
 usage()
 {
 	stderr $0 "[setup|create|destroy|list|start|stop|restart|startall|stopall|update|etcupdate|console]"
-}
-
-stderr()
-{
-	echo $@ >&2
-}
-
-warn()
-{
-	if [ ${NOWARN:-0} -ne 1 ]; then
-		stderr $1
-	fi
-}
-
-mp()
-{
-	zfs get -H mountpoint $1 2>/dev/null | awk '{print $3}'
-}
-
-checkrc()
-{
-	rc=-1
-	eval "$*;rc=$?"
-	if [ $rc -ne 0 ]; then
-		stderr Error running $*
-		exit $rc
-	fi
 }
 
 setup()
@@ -134,82 +108,13 @@ setup()
 	touch $(mp $DATASET)/.fortress_setup_complete
 }
 
-setupcomplete()
-{
-	MP=$(mp $DATASET)
-	if [ -f $MP/.fortress_setup_complete ]; then
-		echo 1
-	else
-		echo 0
-	fi
-}
-
-mount_jail()
-{
-	local MP=$1
-	
-	SMP=$(mp $DATASET/release/$RELEASE/root)
-	
-	if [ ! -e $MP/var/ports ]; then
-		mkdir -p $MP/var/ports
-		mkdir -p $MP/var/ports/distfiles
-		mkdir -p $MP/var/ports/packages
-	fi
-	
-	if [ ! -e $MP/var/db ]; then
-		mkdir $MP/var/db
-	fi
-	
-	if [ ! -e $MP/compat ]; then
-		mkdir $MP/compat
-	fi
-	
-	if [ ! -e $MP/usr/obj ]; then
-		mkdir -p $MP/usr/obj
-	fi
-	
-	for _d in $MOUNT; do
-		mount -t nullfs -o ro $SMP/$_d $MP/$_d
-	done
-	
-	if [ ! -d $MP/dev ]; then
-		mkdir $MP/dev
-	fi
-	mount -t devfs devfs $MP/dev
-	
-	if [ ! -d $MP/tmp ]; then
-		mkdir $MP/tmp
-		chmod 1777 $MP/tmp
-	fi
-	mount -t tmpfs tmpfs $MP/tmp
-}
-
-umount_jail()
-{
-	local MP=$1
-	
-	for _d in $MOUNT; do
-		umount $MP/$_d
-	done
-	umount $MP/dev
-	umount $MP/tmp
-}
-
-needsroot()
-{
-	if [ $EUID -ne 0 ]; then
-		stderr "Command requires root privileges"
-		exit
-	fi
-}
-
 create()
 {
 	needsroot
 
-	load_local_overrides $1
-	
 	local name=${1:?jail name is required}
+
+	load_local_overrides $name
 	
 	zfs list $DATASET/jails/$name > /dev/null 2>&1
 	if [ $? -eq 0 ]; then
@@ -235,15 +140,17 @@ create()
 	echo Copying /root
 	cd $RMP/root && find . | cpio -dp --quiet $MP/root/root
 
-	echo Copying /etc/localtime
-	cp /etc/localtime $MP/root/etc
+	if [ -f /etc/localtime ]; then
+		echo Copying /etc/localtime
+		cp /etc/localtime $MP/root/etc
+	else
+		stderr /etc/localtime does not exist
+	fi
 
 	echo Creating /etc/rc.conf
 	cat > $MP/root/etc/rc.conf <<EOF
 hostname=$name
 cron_flags="-J 15"
-
-$IFCONFIG
 
 # Disable Sendmail by default
 sendmail_enable="NONE"
@@ -253,6 +160,10 @@ sendmail_msp_queue_enable="NO"
 
 # Run secure syslog
 syslogd_flags="-c -ss"
+EOF
+
+	cat > $MP/root/etc/rc.conf.d/ifconfig.conf <<EOF
+$IFCONFIG
 EOF
 
 	echo Creating /etc/resolv.conf
@@ -268,28 +179,7 @@ EOF
 	umount_jail $MP/root
 
 	echo Writing jail.conf
-	cat > $MP/jail.conf <<EOF
-$name {
-	host.hostname = "\$name.$DOMAIN";
-	path = "$MP/root";
-
-	mount.devfs;
-	mount.fstab = "$MP/fstab";
-
-	vnet;
-	vnet.interface = "e0b_\$name";
-
-	exec.system_user = "root";
-	exec.jail_user = "root";
-	
-	exec.clean;
-	exec.start = "/bin/sh /etc/rc";
-	exec.stop = "/bin/sh /etc/rc.shutdown";
-	exec.consolelog = "/var/log/jail_\${name}_console.log";
-	exec.prestart += "$JIB addm \${name} $PUBLIC_IFACE";
-	exec.poststop += "$JIB destroy \${name}";
-}
-EOF
+	create_jailconf $name $MP $DOMAIN $JIB $PUBLIC_IFACE
 
 	echo Writing fstab
 	SMP=$(mp $DATASET/release/$RELEASE/root)
@@ -432,20 +322,6 @@ etcupdate()
 	echo "etcupdate complete. Restart jails a final time"
 }
 
-load_local_overrides()
-{
-	local name=${1:?jail name is required}
-	
-	LCONFIG=/usr/local/etc/fortress/$name.conf
-	if [ -f $LCONFIG ]; then
-		. $LCONFIG
-	else
-		stderr Create $LCONFIG.
-		stderr It should contain zero or more overrides of variables from $CONFIG.
-		exit 1
-	fi
-}
-
 startall()
 {
 	get_jail_names mountpoint | while read -r jail mp; do
@@ -458,14 +334,6 @@ startall()
 	done
 }
 
-get_jail_names()
-{
-	local args=""
-	if [ ! -z ${1+is_set} ]; then
-		args=",$1"
-	fi
-	zfs list -r -d1 -oname$args $DATASET/jails | tail -n+3 | sed "s@$DATASET/jails/@@"
-}
 
 stopall()
 {
@@ -526,6 +394,10 @@ main()
 				;;
 			console)
 				shift
+				i=$(is_running $1)
+				if [ $i -ne 1 ]; then
+					start $1
+				fi
 				jexec -l $1 /bin/csh
 				;;
 			*)
