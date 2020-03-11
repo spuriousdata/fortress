@@ -6,9 +6,18 @@ load_local_overrides()
 	if [ -f $localconf ]; then
 		. $localconf
 	else
-		stderr Create $localconf.
-		stderr It should contain zero or more overrides of variables from $CONFIG.
-		exit 1
+		echo -n "Missing $localconf. Create it? [Y/n] "
+		read RESPONSE
+		case $RESPONSE in
+			""|[Yy]|[Yy][Ee][Ss])
+				cp /usr/local/etc/fortress/SAMPLE.conf $localconf
+				$EDITOR $localconf
+				;;
+			*)
+				stderr Cannot continue. Create $localconf -- it should contain zero or more overrides of variables from $CONFIG.
+				exit 1
+				;;
+		esac
 	fi
 }
 
@@ -22,6 +31,18 @@ create_jailconf()
 
 	load_local_overrides $name
 
+	local pairs=""
+	local x=0
+	local i=""
+	for i in $iface; do
+		if [ "x${pairs}" = "x" ]; then
+			pairs="e${x}b_\$name"
+		else
+			pairs="$pairs, e${x}b_\$name"
+		fi
+		let x=$x+1
+	done
+
 	cat > $mountpoint/jail.conf <<EOF
 $name {
 	host.hostname = "\$name.$domain";
@@ -31,7 +52,7 @@ $name {
 	mount.fstab = "$mountpoint/fstab";
 
 	vnet;
-	vnet.interface = "e0b_\$name";
+	vnet.interface = ${pairs};
 
 	exec.system_user = "root";
 	exec.jail_user = "root";
