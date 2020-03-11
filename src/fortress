@@ -230,10 +230,9 @@ list()
 
 		if [ "x$JID" != "x" ]; then
 			IP=$(jexec $name ifconfig e0b_$name 2>/dev/null | awk '/inet/{print $2}')
-			if [ ! -z ${IP+is_set} ]; then
-				warn "Can't connect to jail without root, parsing rc.conf for IP"
+			if [ "x$IP" = "x" ]; then
 				_ip=$(ip_from_rc_conf $name $mp)
-				IP=${_ip:=n/a}
+				IP=${_ip:="??.??.??.??"}
 			fi
 			RUNNING=yes
 		else
