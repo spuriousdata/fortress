@@ -1,6 +1,5 @@
 #!/bin/sh
 
-
 : ${PREFIX:=/usr/local}
 : ${STAGEPREFIX:=""}
 : ${JIBPATH:=${PREFIX}/scripts/jib}
@@ -19,11 +18,19 @@ if [ ! -d $INSTALLPATH/etc/fortress ]; then
 	mkdir -p $INSTALLPATH/etc/fortress
 fi
 
+if [ ! -d $INSTALLPATH/lib/fortress ]; then
+	mkdir -p $INSTALLPATH/lib/fortress
+fi
+
+if [ ! -d $INSTALLPATH/sbin ]; then
+	mkdir -p $INSTALLPATH/sbin
+fi
+
 T=$(mktemp) || exit 1
 
 install -m555 $D/src/fortress  $INSTALLPATH/sbin/fortress
 install -m555 $JIBSRC $JIBINSTALLPATH
-install -Dd -m755 $INSTALLPATH/lib/fortress $D/src/lib/*
+install -m644 $D/src/lib/* $INSTALLPATH/lib/fortress
 sed -e "s@{{JIB}}@JIB=$JIBPATH@" < $D/src/fortress.conf.sample.tmpl > $T
 install -m644 $T $INSTALLPATH/etc/fortress.conf.sample
 install -m644 $D/src/SAMPLE.conf $INSTALLPATH/etc/fortress/SAMPLE.conf
