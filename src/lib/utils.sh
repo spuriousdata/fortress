@@ -26,16 +26,13 @@ create_jailconf()
 {
 	local name=$1
 	local mountpoint=$2
-	local domain=$3
-	local jib=$4
-	local iface=$5
 
 	load_local_overrides $name
 
 	local pairs=""
 	local x=0
 	local i=""
-	for i in $iface; do
+	for i in $PUBLIC_IFACE; do
 		if [ "x${pairs}" = "x" ]; then
 			pairs="e${x}b_\$name"
 		else
@@ -46,7 +43,7 @@ create_jailconf()
 
 	cat > $mountpoint/jail.conf <<EOF
 $name {
-	host.hostname = "\$name.$domain";
+	host.hostname = "\$name.$DOMAIN";
 	path = "$mountpoint/root";
 
 	mount.devfs;
@@ -62,8 +59,8 @@ $name {
 	exec.start = "/bin/sh /etc/rc";
 	exec.stop = "/bin/sh /etc/rc.shutdown";
 	exec.consolelog = "/var/log/jail_\${name}_console.log";
-	exec.prestart += "$jib addm \${name} $iface";
-	exec.poststop += "$jib destroy \${name}";
+	exec.prestart += "$JIB addm \${name} $PUBLIC_IFACE";
+	exec.poststop += "$JIB destroy \${name}";
 }
 EOF
 }

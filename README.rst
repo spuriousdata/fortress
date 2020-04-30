@@ -36,19 +36,20 @@ Create a Jail
 ***********************
 Create the file /usr/local/etc/fortress/*JAILNAME*.conf, replacing *JAILNAME* with
 the name of your jail. The file can be empty, but you will probably want to at
-least define *IFCONFIG*. The variable *$name* will be replaced with your jail's
+least define *RC_CONF*. The variable *$name* will be replaced with your jail's
 name when the config is loaded into fortress. The name of the interface inside
 the jail will always be e0b_$name.::
 
     # Content of /usr/local/etc/fortress/JAILNAME.conf
-    IFCONFIG=$(cat <<EOM
-    ifconfig_e0b_$name="inet 192.168.12.129/24"
-    defaultrouter="192.168.12.1"
+    # DO NOT QUOTE YOUR VALUES
+    RC_CONF=$(cat <<EOM
+    ifconfig_e0b_$name=inet 192.168.12.129/24
+    defaultrouter=192.168.12.1
     EOM
     )
 
 Assuming we we call our new jail *test1* and have created
-/usr/local/etc/fortress/test1.conf and set *IFCONFIG* . We can now run::
+/usr/local/etc/fortress/test1.conf and set *RC_CONF* . We can now run::
 
     root@jailhost:~ # fortress create test1
     

@@ -162,9 +162,12 @@ sendmail_msp_queue_enable="NO"
 syslogd_flags="-c -ss"
 EOF
 
-	cat > $MP/root/etc/rc.conf.d/network <<EOF
-$IFCONFIG
-EOF
+	local OLDIFS=$IFS
+	export IFS=
+	echo "$RC_CONF" | while read -r line; do
+		sysrc -f $MP/root/etc/rc.conf $line
+	done
+	export IFS=$OLDIFS
 
 	echo Creating /etc/resolv.conf
 	if [ ! -z ${RESOLV_CONF+is_set} ]; then
@@ -179,7 +182,7 @@ EOF
 	umount_jail $MP/root
 
 	echo Writing jail.conf
-	create_jailconf $name $MP $DOMAIN $JIB $PUBLIC_IFACE
+	create_jailconf $name $MP 
 
 	echo Writing fstab
 	SMP=$(mp $DATASET/release/$RELEASE/root)

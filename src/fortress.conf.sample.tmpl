@@ -21,9 +21,10 @@ DOMAIN=jails.example.org
 #)
 
 ## The interface name inside the jail will always be e0b_$jailname
-#IFCONFIG=$(cat <<EOM
-#ifconfig_e0b_test="inet 192.168.12.129/24"
-#defaultrouter="192.168.12.1"
+## DO NOT QUOTE YOUR VAULES
+#RC_CONF=$(cat <<EOM
+#ifconfig_e0b_test=inet 192.168.12.129/24
+#defaultrouter=192.168.12.1
 #EOM
 #)
 
