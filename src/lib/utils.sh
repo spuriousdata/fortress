@@ -3,9 +3,7 @@ load_local_overrides()
 	local name=${1:?jail name is required}
 	local localconf=/usr/local/etc/fortress/$name.conf
 
-	if [ -f $localconf ]; then
-		. $localconf
-	else
+	if [ ! -f $localconf ]; then
 		echo -n "Missing $localconf. Create it? [Y/n] "
 		read RESPONSE
 		case $RESPONSE in
@@ -19,6 +17,9 @@ load_local_overrides()
 				;;
 		esac
 	fi
+
+	sync
+	. $localconf
 }
 
 create_jailconf()

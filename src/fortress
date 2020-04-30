@@ -162,7 +162,7 @@ sendmail_msp_queue_enable="NO"
 syslogd_flags="-c -ss"
 EOF
 
-	cat > $MP/root/etc/rc.conf.d/ifconfig.conf <<EOF
+	cat > $MP/root/etc/rc.conf.d/network <<EOF
 $IFCONFIG
 EOF
 
@@ -211,13 +211,28 @@ destroy()
 		zfs destroy $DATASET/jails/$name/root
 		zfs destroy $DATASET/jails/$name
 	fi
+
+	local cfg=/usr/local/etc/fortress/$name.conf
+	if [ -f $cfg ]; then
+		echo -n "Delete $cfg? [y/N]: "
+		read RESP
+		RESP=${RESP:-N}
+		if [ $RESP = 'y' -o $RESP = 'Y' ]; then
+			rm $cfg
+		fi
+	fi
 }
 
 ip_from_rc_conf()
 {
 	local name=${1:?jail name is required}
 	local mp=${2:?mountpoint is required}
-	IP=$(grep e0b_$name $mp/root/etc/rc.conf | awk 'match($0, /inet [\.0-9]+/){print substr($0, RSTART+5, RLENGTH-5)}')
+
+	if [ -f $mp/root/etc/rc.conf.d/network ]; then
+		IP=$(cat $mp/root/etc/rc.conf $mp/root/etc/rc.conf.d/network | grep e0b_$name | awk 'match($0, /inet [\.0-9]+/){print substr($0, RSTART+5, RLENGTH-5)}')
+	else
+		IP=$(cat $mp/root/etc/rc.conf | grep e0b_$name | awk 'match($0, /inet [\.0-9]+/){print substr($0, RSTART+5, RLENGTH-5)}')
+	fi
 	echo $IP
 }
 
