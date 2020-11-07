@@ -1,14 +1,14 @@
 load_local_overrides()
 {
 	local name=${1:?jail name is required}
-	local localconf=/usr/local/etc/fortress/$name.conf
+	local localconf=$LOCALCONF_DIR/$name.conf
 
 	if [ ! -f $localconf ]; then
 		echo -n "Missing $localconf. Create it? [Y/n] "
 		read RESPONSE
 		case $RESPONSE in
 			""|[Yy]|[Yy][Ee][Ss])
-				cp /usr/local/etc/fortress/SAMPLE.conf $localconf
+				cp $LOCALCONF_DIR/SAMPLE.conf $localconf
 				$EDITOR $localconf
 				;;
 			*)
