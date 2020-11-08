@@ -1,0 +1,2 @@
+#XX - use relative mountpoint, fortress will prefix it with the location of the jail 
+#XX - eg: /dev/sda /mnt/disk ufs rw 0 0

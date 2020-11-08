@@ -33,7 +33,7 @@ fi
 
 usage()
 {
-	stderr $0 "[setup|create|destroy|list|start|stop|restart|startall|stopall|update|etcupdate|console]"
+	stderr $0 "[setup|create|destroy|list|start|stop|restart|startall|stopall|update|upgrade|etcupdate|console|rfs|rjc]"
 }
 
 setup()
@@ -131,14 +131,15 @@ create()
 	zfs create $DATASET/jails/$name
 	zfs create $DATASET/jails/$name/root
 	
-	MP=$(mp $DATASET/jails/$name)
+	local MP=$(mp $DATASET/jails/$name)
 	
 	echo Creating jail root directories
 	for _d in $MOUNT; do
 		mkdir -p $MP/root/$_d
 	done
 	
-	RMP=$(mp $DATASET/release/$RELEASE/root)
+	local RMP=$(mp $DATASET/release/$RELEASE/root)
+
 	echo Copying /etc
 	cd $RMP/etc && find . | cpio -dp --quiet $MP/root/etc
 
@@ -189,14 +190,11 @@ EOF
 	echo Writing jail.conf
 	create_jailconf $name $MP 
 
-	echo Writing fstab
-	SMP=$(mp $DATASET/release/$RELEASE/root)
-	(echo "#Device Mountpoint FStype Options Dump Pass"
-	 for _d in $MOUNT; do
-		echo $SMP/$_d $MP/root/$_d nullfs ro 0 0
-	 done) | column -t > $MP/fstab
 
-	 echo Jail created
+	echo Writing fstab
+	create_fstab $name $RMP $MP
+
+	echo Jail created
 }
 
 rewrite_jail_conf()
@@ -208,6 +206,18 @@ rewrite_jail_conf()
 
 	echo Writing jail.conf
 	create_jailconf $name $MP 
+}
+
+rewrite_fstab()
+{
+	needsroot
+
+	local name=${1:?jail name is required}
+	local RMP=$(mp $DATASET/release/$RELEASE/root)
+	local MP=$(mp $DATASET/jails/$name)
+
+	echo Writing fstab
+	create_fstab $name $RMP $MP
 }
 
 destroy()
@@ -240,19 +250,6 @@ destroy()
 			rm $cfg
 		fi
 	fi
-}
-
-ip_from_rc_conf()
-{
-	local name=${1:?jail name is required}
-	local mp=${2:?mountpoint is required}
-
-	if [ -f $mp/root/etc/rc.conf.d/network ]; then
-		IP=$(cat $mp/root/etc/rc.conf $mp/root/etc/rc.conf.d/network | grep e0b_$name | awk 'match($0, /inet [\.0-9]+/){print substr($0, RSTART+5, RLENGTH-5)}')
-	else
-		IP=$(cat $mp/root/etc/rc.conf | grep e0b_$name | awk 'match($0, /inet [\.0-9]+/){print substr($0, RSTART+5, RLENGTH-5)}')
-	fi
-	echo $IP
 }
 
 
@@ -361,6 +358,7 @@ upgrade()
 		[Yy]|[Yy][Ee][Ss])
 			setup
 			stop $name
+			rewrite_fstab $name
 			mount_jail $MP/root
 			etcupdate $name
 			umount_jail $MP/root
@@ -468,6 +466,10 @@ main()
 			rjc)
 				shift
 				rewrite_jail_conf $@
+				;;
+			rfs)
+				shift
+				rewrite_fstab $@
 				;;
 			*)
 				if [ ! -z $1 ]; then 
