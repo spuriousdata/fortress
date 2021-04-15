@@ -67,6 +67,8 @@ create_jailconf()
 		let x=$x+1
 	done
 
+	EJC=$(echo $EXTRA_JAIL_CONF | indent | pr -to8 -i8)
+
 	cat > $mountpoint/jail.conf <<EOF
 $name {
 	host.hostname = "\$name.$DOMAIN";
@@ -87,6 +89,8 @@ $name {
 	exec.consolelog = "/var/log/jail_\${name}_console.log";
 	exec.prestart += "$JIB addm \${name} $PUBLIC_IFACE";
 	exec.poststop += "$JIB destroy \${name}";
+
+$EJC
 }
 EOF
 }
