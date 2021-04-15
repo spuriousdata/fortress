@@ -173,5 +173,5 @@ Additional Configuration
 ************************
 
 The jail's configuration is located in */fortress/jails/test1/jail.conf*.
-You can also edit */fortress/jails/test1/fstab* to append any additional
+You can also edit */usr/local/etc/fortress/test1.fstab* to append any additional
 mountpoints your jail will need. 
