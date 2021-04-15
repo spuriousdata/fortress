@@ -260,7 +260,7 @@ list()
 		JID=$(jls -j $name -qn jid 2>/dev/null | cut -f2 -d=)
 
 		if [ "x$JID" != "x" ]; then
-			IP=$(jexec $name ifconfig e0b_$name 2>/dev/null | awk '/inet/{print $2}')
+			IP=$(jexec $name ifconfig e0b_$name 2>/dev/null | awk '/inet /{print $2}')
 			if [ "x$IP" = "x" ]; then
 				_ip=$(ip_from_rc_conf $name $mp)
 				IP=${_ip:="??.??.??.??"}
