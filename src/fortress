@@ -288,6 +288,16 @@ start()
 
 	local name=${1:?jail name is required}
 
+	if is_running $name; then
+		stderr Error: $name is already running
+		return 1
+	fi
+
+	if [ ! -z ${AUTOGEN:+is_set} ]; then
+		rewrite_jail_conf
+		rewrite_fstab
+	fi
+
 	MP=$(mp $DATASET/jails/$name)
 	echo Starting $name...
 	jail -qcf $MP/jail.conf
@@ -419,6 +429,10 @@ main()
 {
 	if [ $(setupcomplete) = "1" ]; then
 		case $1 in 
+			setup)
+				echo "Setup already complete"
+				usage
+				;;
 			create)
 				shift
 				create $@
