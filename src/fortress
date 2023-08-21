@@ -16,6 +16,11 @@ if [ "x$1" = "x-f" ]; then
 	shift; shift
 fi
 
+if [ "x$1" = "x-X" ]; then
+	set -x
+	shift
+fi
+
 	
 if [ -f $CONFIG ]; then
 	. $CONFIG
