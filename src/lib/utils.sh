@@ -92,7 +92,7 @@ create_jailconf()
 	local x=0
 	local i=""
 	for i in $PUBLIC_IFACE; do
-		if [ "x${pairs}" = "x" ]; then
+		if [ -z ${pairs:+is_set} ]; then
 			pairs="e${x}b_\$name"
 		else
 			pairs="$pairs, e${x}b_\$name"
@@ -133,7 +133,7 @@ get_jail_names()
 	local args=""
 	local dataset=$DATASET
 
-	if [ ! -z ${1+is_set} ]; then
+	if [ ! -z ${1:+is_set} ]; then
 		args=",$1"
 	fi
 	zfs list -r -d1 -oname$args $dataset/jails | tail -n+3 | sed "s@$dataset/jails/@@"
@@ -141,6 +141,10 @@ get_jail_names()
 
 needsroot()
 {
+	if [ ${NOROOT:-0} -eq 1 ]; then
+		return
+	fi
+
 	if [ $(id -u) -ne 0 ]; then
 		stderr "Command requires root privileges"
 		exit
@@ -161,8 +165,12 @@ warn()
 
 checkrc()
 {
-	rc=-1
-	eval "$*;rc=$?"
+	if [ ${VERBOSE:-0} -eq 1 ]; then
+		echo $*
+	fi
+
+	$*
+	local rc=$?
 	if [ $rc -ne 0 ]; then
 		stderr Error running $*
 		exit $rc
@@ -240,9 +248,9 @@ is_running()
 
 	jls -j $jail >/dev/null 2>&1
 	if [ $? -eq 0 ]; then
-		echo 1
+		return 0
 	else
-		echo 0
+		return 1
 	fi
 }
 
