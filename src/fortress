@@ -43,17 +43,13 @@ setup()
 
 	zfs list $DATASET > /dev/null 2>&1
 	if [ $? -ne 0 ]; then
-		echo -n "fortress dataset '$DATASET' does not exist. Should I create it? [y/N]: "
-		read RESPONSE
-		case $RESPONSE in
-			[Yy]|[Yy][Ee][Ss])
-				stderr Creating $DATASET
-				checkrc zfs create -po mountpoint=/fortress $DATASET
-				;;
-			*)
-				exit
-				;;
-		esac
+		if confirm_prompt false "fortress dataset '$DATASET' does not exist. Should I create it?"; then
+			stderr Creating $DATASET
+			checkrc zfs create -po mountpoint=$MOUNTPOINT $DATASET
+		else
+			stderr Need to create dataset $DATASET
+			exit 1
+		fi
 	fi
 
 
@@ -458,8 +454,7 @@ main()
 				;;
 			console)
 				shift
-				i=$(is_running $1)
-				if [ $i -ne 1 ]; then
+				if ! is_running $1; then
 					start $1
 				fi
 				jexec -l $1 /bin/csh

@@ -1,3 +1,41 @@
+confirm_prompt()
+{
+	local default=$1
+	local question=$2
+	local answers="[Y/n]"
+
+	if [ "x$default" != "xtrue" ]; then
+		answers="[y/N]"
+	fi
+
+	echo -n $question $answers " "
+
+	confirm $default
+	return $?
+}
+
+confirm()
+{
+	local default=$1
+
+	read RESP
+	case $RESP in
+		"")
+			if [ "x$default" = "xtrue" ]; then
+				return 0
+			else
+				return 1
+			fi
+			;;
+		[Yy]|[Yy][Ee][Ss])
+			return 0
+			;;
+		*)
+			return 1
+			;;
+	esac
+}
+
 load_local_overrides()
 {
 	local name=${1:?jail name is required}
@@ -5,19 +43,14 @@ load_local_overrides()
 	local localfstab=$LOCALCONF_DIR/$name.fstab
 
 	if [ ! -f $localconf ]; then
-		echo -n "Missing $localconf. Create it? [Y/n] "
-		read RESPONSE
-		case $RESPONSE in
-			""|[Yy]|[Yy][Ee][Ss])
-				cp $LOCALCONF_DIR/SAMPLE.conf $localconf
-				cp $LOCALCONF_DIR/SAMPLE.fstab $localfstab
-				$EDITOR $localconf
-				;;
-			*)
-				stderr Cannot continue. Create $localconf -- it should contain zero or more overrides of variables from $CONFIG.
-				exit 1
-				;;
-		esac
+		if confirm_prompt true "Missing $localconf. Create it?"; then
+			cp $LOCALCONF_DIR/SAMPLE.conf $localconf
+			cp $LOCALCONF_DIR/SAMPLE.fstab $localfstab
+			$EDITOR $localconf
+		else
+			stderr Cannot continue. Create $localconf -- it should contain zero or more overrides of variables from $CONFIG.
+			exit 1
+		fi
 	fi
 
 	sync
