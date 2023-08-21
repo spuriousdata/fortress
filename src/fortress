@@ -316,8 +316,20 @@ update()
 	zfs list $ZR@pre-update >/dev/null 2>&1
 	ret=$?
 	if [ $ret -eq 0 ]; then
-		stderr "$ZR@pre-update already exists. Delete it first."
-		exit $ret
+		local snap_epoch=$(zfs get -pH creation $ZR@pre-update | cut -f3)
+		stderr "Error: $ZR@pre-update already exists."
+		stderr "  It was created before your last update on $(date -r $snap_epoch)."
+		if confirm_prompt true "Should I keep it around?"; then
+			local newname="pre-update-$(date -r $snap_epoch -Iseconds)"
+			echo Renaming snapshot @pre-update to $ZR@$newname
+			echo zfs rename $ZR@pre-update $ZR@$newname"
+		else
+			stderr "To continue, you must first delete the old backup snapshot.
+			if confirm_prompt true "Should I delete it now?"; then
+				echo zfs destroy -v $ZR@pre-update
+			fi
+		fi
+
 	fi
 
 	zfs snap $ZR@pre-update
