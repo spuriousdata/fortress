@@ -1,11 +1,10 @@
 #!/bin/sh
 
-#set -x
-
-FTPHOST=http://ftp.freebsd.org/pub/FreeBSD/releases/$(uname -m)
-SETS="base.txz lib32.txz src.txz"
+FTPHOST=${FTPHOST:=http://ftp.freebsd.org/pub/FreeBSD/releases/$(uname -m)}
 LIBDIR=${LIBDIR:=/usr/local/lib/fortress}
 LOCALCONF_DIR=${LOCALCONF_DIR:=/usr/local/etc/fortress}
+
+SETS="base.txz lib32.txz src.txz"
 
 PV=$(which pv)
 if [ $? -ne 0 ]; then
