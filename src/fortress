@@ -7,9 +7,6 @@ LOCALCONF_DIR=${LOCALCONF_DIR:=/usr/local/etc/fortress}
 SETS="base.txz lib32.txz src.txz"
 
 PV=$(which pv)
-if [ $? -ne 0 ]; then
-	PV=""
-fi
 
 INSTALL_CONFIG=/usr/local/etc/fortress.conf
 CONFIG=$INSTALL_CONFIG
@@ -87,7 +84,7 @@ setup()
 		fi
 
 		PROGBAR="cat"
-		if [ ! -z ${PV+is_set} ]; then
+		if [ ! -z ${PV:+is_set} ]; then
 			PROGBAR="$PV -s $(stat -f %z $MP/$SET)"
 		fi
 
@@ -175,7 +172,7 @@ EOF
 	export IFS=$OLDIFS
 
 	echo Creating /etc/resolv.conf
-	if [ ! -z ${RESOLV_CONF+is_set} ]; then
+	if [ ! -z ${RESOLV_CONF:+is_set} ]; then
 		cat > $MP/root/etc/resolv.conf <<EOF
 $RESOLV_CONF
 EOF
