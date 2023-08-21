@@ -2,7 +2,9 @@
 
 # Any of these can be overridden in /usr/local/etc/fortress/$jailname.conf
 
-RELEASE=12.2-RELEASE
+# uncomment to automatically regenerate the fstab and jail.conf file when starting the jail
+#AUTOGEN=1
+RELEASE=13.2-RELEASE
 DATASET=zroot/fortress
 #PUBLIC_IFACE="jailiface otheriface"
 PUBLIC_IFACE=jailiface
