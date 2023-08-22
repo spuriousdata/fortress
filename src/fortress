@@ -473,6 +473,11 @@ main()
 				stop $@
 				start $@
 				;;
+			restartall)
+				shift
+				stopall $@
+				startall $@
+				;;
 			update)
 				shift
 				update $@
