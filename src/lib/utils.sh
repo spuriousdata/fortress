@@ -97,9 +97,10 @@ create_jailconf()
 		else
 			pairs="$pairs, e${x}b_\$name"
 		fi
-		let x=$x+1
+		x=$(( $x+1 ))
 	done
 
+	echo Preparing EXTRA_JAIL_CONF
 	EJC=$(echo $EXTRA_JAIL_CONF | stripall | indent | pr -to8 -i8)
 
 	cat > $mountpoint/jail.conf <<EOF
