@@ -332,9 +332,9 @@ update()
 		if confirm_prompt true "Should I keep it around?"; then
 			local newname="pre-update-$(date -r $snap_epoch -Iseconds)"
 			echo Renaming snapshot @pre-update to $ZR@$newname
-			echo zfs rename $ZR@pre-update $ZR@$newname"
+			echo zfs rename $ZR@pre-update $ZR@$newname
 		else
-			stderr "To continue, you must first delete the old backup snapshot.
+			stderr "To continue, you must first delete the old backup snapshot."
 			if confirm_prompt true "Should I delete it now?"; then
 				echo zfs destroy -v $ZR@pre-update
 			fi
