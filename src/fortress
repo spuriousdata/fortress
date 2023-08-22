@@ -1,8 +1,8 @@
 #!/bin/sh
 
-FTPHOST=${FTPHOST:=http://ftp.freebsd.org/pub/FreeBSD/releases/$(uname -m)}
-LIBDIR=${LIBDIR:=/usr/local/lib/fortress}
-LOCALCONF_DIR=${LOCALCONF_DIR:=/usr/local/etc/fortress}
+: ${FTPHOST:=http://ftp.freebsd.org/pub/FreeBSD/releases/$(uname -m)}
+: ${LIBDIR:=/usr/local/lib/fortress}
+: ${LOCALCONF_DIR:=/usr/local/etc/fortress}
 
 SETS="base.txz lib32.txz src.txz"
 
@@ -273,12 +273,12 @@ list()
 			IP=$(jexec $name ifconfig e0b_$name 2>/dev/null | awk '/inet /{print $2}')
 			if [ "x$IP" = "x" ]; then
 				_ip=$(ip_from_rc_conf $name $mp)
-				IP=${_ip:="??.??.??.??"}
+				IP=${_ip:-"??.??.??.??"}
 			fi
 			RUNNING=yes
 		else
 			_ip=$(ip_from_rc_conf $name $mp)
-			IP=${_ip:=n/a}
+			IP=${_ip:-n/a}
 			RUNNING=no
 			JID=n/a
 		fi
@@ -371,7 +371,7 @@ update()
 		mount -t devfs devfs $R/dev
 		chroot $R etcupdate build /etcupdate/etcupdate-$RELEASE.tbz
 		umount $R/dev
-		echo "Updates installed. Restart jails then run 'fortress.sh etcupdate jail1 jail2 ... jailN'"
+		echo "Updates installed. Run \`$0 etcupdate jail1 jail2 ... jailN\`"
 	else
 		echo "No updates to install"
 	fi
@@ -381,31 +381,37 @@ upgrade()
 {
 	needsroot
 
-	local name=${1:?jail name is required}
-	local MP=$(mp $DATASET/jails/$name)
-
-	load_local_overrides $name
-
-	if confirm_prompt false "About to upgrade jail '$name' to '$RELEASE,' is this correct?"; then
+	if confirm_prompt false "About download and prepare '$RELEASE,' is this correct?"; then
 		setup
-		stop $name
-		rewrite_fstab $name
-		mount_jail $MP/root
-		etcupdate $name
-		umount_jail $MP/root
-		start $name
+
+		if confirm_prompt false "Upgrade all jails to this new version?"; then
+			restart $name
+			_etcupdate true $name
+			restart $name
+		else
+			stderr "You _must_ run \`$0 etcupdate jail1 jail2 ... jailN\` manually now for any jail that will be upgraded"
+		fi
 	fi
 }
 
-etcupdate()
+_etcupdate()
 {
+	local suppress=$1; shift
+
+	if [ $# -eq 0 ]; then
+		stderr "Usage: _etcupdate [true|false] jail1 jail2...jailN"
+	fi
+
 	for jail in $@
 	do
 		local MP=$(mp $DATASET/jails/$jail)
-		chroot $MP/root /usr/sbin/etcupdate -F -t /etcupdate/etcupdate-$RELEASE.tbz
-		chroot $MP/root /usr/sbin/etcupdate resolve
+		chroot $MP/root etcupdate -F -t /etcupdate/etcupdate-$RELEASE.tbz
+		chroot $MP/root etcupdate resolve
 	done
-	echo "etcupdate complete. Restart jail(s)"
+
+	if [ "x$suppress" = "xfalse" ]; then
+		echo "etcupdate complete. Restart jail(s)"
+	fi
 }
 
 startall()
@@ -473,6 +479,11 @@ main()
 				stop $@
 				start $@
 				;;
+			restartall)
+				shift
+				stopall $@
+				startall $@
+				;;
 			update)
 				shift
 				update $@
@@ -483,7 +494,7 @@ main()
 				;;
 			etcupdate)
 				shift
-				etcupdate $@
+				_etcupdate false $@
 				;;
 			console)
 				shift
