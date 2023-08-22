@@ -294,8 +294,8 @@ start()
 	fi
 
 	if [ ! -z ${AUTOGEN:+is_set} ]; then
-		rewrite_jail_conf
-		rewrite_fstab
+		rewrite_jail_conf $name
+		rewrite_fstab $name
 	fi
 
 	MP=$(mp $DATASET/jails/$name)
