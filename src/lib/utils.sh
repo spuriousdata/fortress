@@ -242,9 +242,9 @@ setupcomplete()
 {
 	MP=$(mp $DATASET)
 	if [ -f $MP/.fortress_setup_complete ]; then
-		echo 1
+		return 0
 	else
-		echo 0
+		return 1
 	fi
 }
 

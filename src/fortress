@@ -25,7 +25,7 @@ fi
 if [ -f $CONFIG ]; then
 	. $CONFIG
 else
-	# stderr is not defined yet, so we can't call it
+	# stderr() is not defined yet, so we can't call it
 	echo "No configuration found. Copy $INSTALL_CONFIG.sample to $INSTALL_CONFIG and edit it before running fortress" >&2
 	exit 1
 fi
@@ -34,7 +34,20 @@ fi
 
 usage()
 {
-	stderr $0 "[setup|create|destroy|list|start|stop|restart|startall|stopall|update|upgrade|etcupdate|console|rfs|rjc]"
+	stderr $0 create "[jailname]"
+	stderr $0 destroy "[jailname]"
+	stderr $0 start "[jailname]"
+	stderr $0 stop "[jailname]"
+	stderr $0 restart "[jailname]"
+	stderr $0 update "[jailname]"
+	stderr $0 upgrade "[jailname]"
+	stderr $0 console "[jailname]"
+	stderr $0 etcupdate "[[jailname]|[jailname] [jailname] ...]"
+	stderr $0 rfs "[jailname] #rewrite fstab"
+	stderr $0 rjc "[jailname] #rewrite jail.conf"
+	stderr $0 list
+	stderr $0 startall
+	stderr $0 stopall
 }
 
 setup()
@@ -230,21 +243,21 @@ destroy()
 	
 	MP=$(mp $DATASET/jails/$name)
 	
-	echo -n "Are you sure you want to destroy $MP? [y/N]: "
-	read RESP
-	RESP=${RESP:-N}
-	if [ $RESP = 'y' -o $RESP = 'Y' ]; then
-		#zfs destroy $DATASET/jails/$name/root
+	if confirm_prompt false "Are you sure you want to destroy $MP?"; then
 		zfs destroy -rf $DATASET/jails/$name
 	fi
 
 	local cfg=/usr/local/etc/fortress/$name.conf
 	if [ -f $cfg ]; then
-		echo -n "Delete $cfg? [y/N]: "
-		read RESP
-		RESP=${RESP:-N}
-		if [ $RESP = 'y' -o $RESP = 'Y' ]; then
+		if confirm_prompt false "Delete $cfg?"; then
 			rm $cfg
+		fi
+	fi
+
+	local fstab=/usr/local/etc/fortress/$name.fstab
+	if [ -f $fstab ]; then
+		if confirm_prompt false "Delete $fstab?"; then
+			rm $fstab
 		fi
 	fi
 }
@@ -373,22 +386,15 @@ upgrade()
 
 	load_local_overrides $name
 
-	echo -n "About to upgrade jail '$name' to '$RELEASE,' is this correct? [y/N]: "
-	read RESPONSE
-	case $RESPONSE in
-		[Yy]|[Yy][Ee][Ss])
-			setup
-			stop $name
-			rewrite_fstab $name
-			mount_jail $MP/root
-			etcupdate $name
-			umount_jail $MP/root
-			start $name
-			;;
-		*)
-			exit
-			;;
-	esac
+	if confirm_prompt false "About to upgrade jail '$name' to '$RELEASE,' is this correct?"; then
+		setup
+		stop $name
+		rewrite_fstab $name
+		mount_jail $MP/root
+		etcupdate $name
+		umount_jail $MP/root
+		start $name
+	fi
 }
 
 etcupdate()
@@ -414,7 +420,6 @@ startall()
 	done
 }
 
-
 stopall()
 {
 	get_jail_names | while read -r jail; do
@@ -429,7 +434,7 @@ stopall()
 
 main()
 {
-	if [ $(setupcomplete) = "1" ]; then
+	if setupcomplete; then
 		case $1 in 
 			setup)
 				echo "Setup already complete"
