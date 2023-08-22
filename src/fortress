@@ -40,11 +40,11 @@ usage()
 	stderr $0 stop "[jailname]"
 	stderr $0 restart "[jailname]"
 	stderr $0 update "[jailname]"
-	stderr $0 upgrade "[jailname]"
 	stderr $0 console "[jailname]"
 	stderr $0 etcupdate "[[jailname]|[jailname] [jailname] ...]"
 	stderr $0 rfs "[jailname] #rewrite fstab"
 	stderr $0 rjc "[jailname] #rewrite jail.conf"
+	stderr $0 upgrade
 	stderr $0 list
 	stderr $0 startall
 	stderr $0 stopall
@@ -329,6 +329,12 @@ stop()
 	jail -qrf $MP/jail.conf $name
 }
 
+restart()
+{
+	stop $@
+	start $@
+}
+
 update()
 {
 	needsroot
@@ -476,8 +482,7 @@ main()
 				;;
 			restart)
 				shift
-				stop $@
-				start $@
+				restart $@
 				;;
 			restartall)
 				shift
