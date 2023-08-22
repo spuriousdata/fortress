@@ -1,8 +1,8 @@
 #!/bin/sh
 
-FTPHOST=${FTPHOST:=http://ftp.freebsd.org/pub/FreeBSD/releases/$(uname -m)}
-LIBDIR=${LIBDIR:=/usr/local/lib/fortress}
-LOCALCONF_DIR=${LOCALCONF_DIR:=/usr/local/etc/fortress}
+: ${FTPHOST:=http://ftp.freebsd.org/pub/FreeBSD/releases/$(uname -m)}
+: ${LIBDIR:=/usr/local/lib/fortress}
+: ${LOCALCONF_DIR:=/usr/local/etc/fortress}
 
 SETS="base.txz lib32.txz src.txz"
 
@@ -273,12 +273,12 @@ list()
 			IP=$(jexec $name ifconfig e0b_$name 2>/dev/null | awk '/inet /{print $2}')
 			if [ "x$IP" = "x" ]; then
 				_ip=$(ip_from_rc_conf $name $mp)
-				IP=${_ip:="??.??.??.??"}
+				IP=${_ip:-"??.??.??.??"}
 			fi
 			RUNNING=yes
 		else
 			_ip=$(ip_from_rc_conf $name $mp)
-			IP=${_ip:=n/a}
+			IP=${_ip:-n/a}
 			RUNNING=no
 			JID=n/a
 		fi
