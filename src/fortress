@@ -293,6 +293,7 @@ start()
 		return 1
 	fi
 
+	load_local_overrides $name
 	if [ ! -z ${AUTOGEN:+is_set} ]; then
 		rewrite_jail_conf $name
 		rewrite_fstab $name
