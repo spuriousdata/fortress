@@ -66,7 +66,7 @@ create_fstab()
 	local EXTRA=""
 
 	if [ -f $localfstab ]; then
-		EXTRA=$(cat $localfstab | awk -v pfx=$MP/root '!/^#XX/{d=$2; if (substr(d, 1, 1) == "/") { d = substr(d, 2, length(d)-1) }; print $1 " " pfx "/" d " " $3 " " $4 " " $5 " " $6}')
+		EXTRA=$(cat $localfstab | stripall | awk -v pfx=$MP/root '!/^#XX/{d=$2; if (substr(d, 1, 1) == "/") { d = substr(d, 2, length(d)-1) }; print $1 " " pfx "/" d " " $3 " " $4 " " $5 " " $6}')
 	fi
 
 	load_local_overrides $name
@@ -100,7 +100,7 @@ create_jailconf()
 		let x=$x+1
 	done
 
-	EJC=$(echo $EXTRA_JAIL_CONF | indent | pr -to8 -i8)
+	EJC=$(echo $EXTRA_JAIL_CONF | stripall | indent | pr -to8 -i8)
 
 	cat > $mountpoint/jail.conf <<EOF
 $name {
@@ -126,6 +126,12 @@ $name {
 $EJC
 }
 EOF
+}
+
+stripall()
+{
+	# strip leading and trailing whitespace and trailing newlines
+	sed -e :a -e 's/^[ \t]*//' -e 's/[ \t]*$//' -e '/^\n*$/N;/\n$/ba'
 }
 
 get_jail_names()
