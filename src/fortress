@@ -1,16 +1,12 @@
 #!/bin/sh
 
-#set -x
-
-FTPHOST=http://ftp.freebsd.org/pub/FreeBSD/releases/$(uname -m)
-SETS="base.txz lib32.txz src.txz"
+FTPHOST=${FTPHOST:=http://ftp.freebsd.org/pub/FreeBSD/releases/$(uname -m)}
 LIBDIR=${LIBDIR:=/usr/local/lib/fortress}
 LOCALCONF_DIR=${LOCALCONF_DIR:=/usr/local/etc/fortress}
 
+SETS="base.txz lib32.txz src.txz"
+
 PV=$(which pv)
-if [ $? -ne 0 ]; then
-	PV=""
-fi
 
 INSTALL_CONFIG=/usr/local/etc/fortress.conf
 CONFIG=$INSTALL_CONFIG
@@ -18,6 +14,11 @@ CONFIG=$INSTALL_CONFIG
 if [ "x$1" = "x-f" ]; then
 	CONFIG=$2
 	shift; shift
+fi
+
+if [ "x$1" = "x-X" ]; then
+	set -x
+	shift
 fi
 
 	
@@ -42,17 +43,13 @@ setup()
 
 	zfs list $DATASET > /dev/null 2>&1
 	if [ $? -ne 0 ]; then
-		echo -n "fortress dataset '$DATASET' does not exist. Should I create it? [y/N]: "
-		read RESPONSE
-		case $RESPONSE in
-			[Yy]|[Yy][Ee][Ss])
-				stderr Creating $DATASET
-				checkrc zfs create -po mountpoint=/fortress $DATASET
-				;;
-			*)
-				exit
-				;;
-		esac
+		if confirm_prompt false "fortress dataset '$DATASET' does not exist. Should I create it?"; then
+			stderr Creating $DATASET
+			checkrc zfs create -po mountpoint=$MOUNTPOINT $DATASET
+		else
+			stderr Need to create dataset $DATASET
+			exit 1
+		fi
 	fi
 
 
@@ -88,7 +85,7 @@ setup()
 		fi
 
 		PROGBAR="cat"
-		if [ ! -z ${PV+is_set} ]; then
+		if [ ! -z ${PV:+is_set} ]; then
 			PROGBAR="$PV -s $(stat -f %z $MP/$SET)"
 		fi
 
@@ -176,7 +173,7 @@ EOF
 	export IFS=$OLDIFS
 
 	echo Creating /etc/resolv.conf
-	if [ ! -z ${RESOLV_CONF+is_set} ]; then
+	if [ ! -z ${RESOLV_CONF:+is_set} ]; then
 		cat > $MP/root/etc/resolv.conf <<EOF
 $RESOLV_CONF
 EOF
@@ -291,6 +288,16 @@ start()
 
 	local name=${1:?jail name is required}
 
+	if is_running $name; then
+		stderr Error: $name is already running
+		return 1
+	fi
+
+	if [ ! -z ${AUTOGEN:+is_set} ]; then
+		rewrite_jail_conf $name
+		rewrite_fstab $name
+	fi
+
 	MP=$(mp $DATASET/jails/$name)
 	echo Starting $name...
 	jail -qcf $MP/jail.conf
@@ -319,8 +326,20 @@ update()
 	zfs list $ZR@pre-update >/dev/null 2>&1
 	ret=$?
 	if [ $ret -eq 0 ]; then
-		stderr "$ZR@pre-update already exists. Delete it first."
-		exit $ret
+		local snap_epoch=$(zfs get -pH creation $ZR@pre-update | cut -f3)
+		stderr "Error: $ZR@pre-update already exists."
+		stderr "  It was created before your last update on $(date -r $snap_epoch)."
+		if confirm_prompt true "Should I keep it around?"; then
+			local newname="pre-update-$(date -r $snap_epoch -Iseconds)"
+			echo Renaming snapshot @pre-update to $ZR@$newname
+			echo zfs rename $ZR@pre-update $ZR@$newname"
+		else
+			stderr "To continue, you must first delete the old backup snapshot.
+			if confirm_prompt true "Should I delete it now?"; then
+				echo zfs destroy -v $ZR@pre-update
+			fi
+		fi
+
 	fi
 
 	zfs snap $ZR@pre-update
@@ -410,6 +429,10 @@ main()
 {
 	if [ $(setupcomplete) = "1" ]; then
 		case $1 in 
+			setup)
+				echo "Setup already complete"
+				usage
+				;;
 			create)
 				shift
 				create $@
@@ -457,8 +480,7 @@ main()
 				;;
 			console)
 				shift
-				i=$(is_running $1)
-				if [ $i -ne 1 ]; then
+				if ! is_running $1; then
 					start $1
 				fi
 				jexec -l $1 /bin/csh

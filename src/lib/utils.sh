@@ -1,3 +1,41 @@
+confirm_prompt()
+{
+	local default=$1
+	local question=$2
+	local answers="[Y/n]"
+
+	if [ "x$default" != "xtrue" ]; then
+		answers="[y/N]"
+	fi
+
+	echo -n $question $answers " "
+
+	confirm $default
+	return $?
+}
+
+confirm()
+{
+	local default=$1
+
+	read RESP
+	case $RESP in
+		"")
+			if [ "x$default" = "xtrue" ]; then
+				return 0
+			else
+				return 1
+			fi
+			;;
+		[Yy]|[Yy][Ee][Ss])
+			return 0
+			;;
+		*)
+			return 1
+			;;
+	esac
+}
+
 load_local_overrides()
 {
 	local name=${1:?jail name is required}
@@ -5,19 +43,14 @@ load_local_overrides()
 	local localfstab=$LOCALCONF_DIR/$name.fstab
 
 	if [ ! -f $localconf ]; then
-		echo -n "Missing $localconf. Create it? [Y/n] "
-		read RESPONSE
-		case $RESPONSE in
-			""|[Yy]|[Yy][Ee][Ss])
-				cp $LOCALCONF_DIR/SAMPLE.conf $localconf
-				cp $LOCALCONF_DIR/SAMPLE.fstab $localfstab
-				$EDITOR $localconf
-				;;
-			*)
-				stderr Cannot continue. Create $localconf -- it should contain zero or more overrides of variables from $CONFIG.
-				exit 1
-				;;
-		esac
+		if confirm_prompt true "Missing $localconf. Create it?"; then
+			cp $LOCALCONF_DIR/SAMPLE.conf $localconf
+			cp $LOCALCONF_DIR/SAMPLE.fstab $localfstab
+			$EDITOR $localconf
+		else
+			stderr Cannot continue. Create $localconf -- it should contain zero or more overrides of variables from $CONFIG.
+			exit 1
+		fi
 	fi
 
 	sync
@@ -33,7 +66,7 @@ create_fstab()
 	local EXTRA=""
 
 	if [ -f $localfstab ]; then
-		EXTRA=$(cat $localfstab | awk -v pfx=$MP/root '!/^#XX/{d=$2; if (substr(d, 1, 1) == "/") { d = substr(d, 2, length(d)-1) }; print $1 " " pfx "/" d " " $3 " " $4 " " $5 " " $6}')
+		EXTRA=$(cat $localfstab | stripall | awk -v pfx=$MP/root '!/^#XX/{d=$2; if (substr(d, 1, 1) == "/") { d = substr(d, 2, length(d)-1) }; print $1 " " pfx "/" d " " $3 " " $4 " " $5 " " $6}')
 	fi
 
 	load_local_overrides $name
@@ -59,7 +92,7 @@ create_jailconf()
 	local x=0
 	local i=""
 	for i in $PUBLIC_IFACE; do
-		if [ "x${pairs}" = "x" ]; then
+		if [ -z ${pairs:+is_set} ]; then
 			pairs="e${x}b_\$name"
 		else
 			pairs="$pairs, e${x}b_\$name"
@@ -67,7 +100,7 @@ create_jailconf()
 		let x=$x+1
 	done
 
-	EJC=$(echo $EXTRA_JAIL_CONF | indent | pr -to8 -i8)
+	EJC=$(echo $EXTRA_JAIL_CONF | stripall | indent | pr -to8 -i8)
 
 	cat > $mountpoint/jail.conf <<EOF
 $name {
@@ -95,12 +128,18 @@ $EJC
 EOF
 }
 
+stripall()
+{
+	# strip leading and trailing whitespace and trailing newlines
+	sed -e :a -e 's/^[ \t]*//' -e 's/[ \t]*$//' -e '/^\n*$/N;/\n$/ba'
+}
+
 get_jail_names()
 {
 	local args=""
 	local dataset=$DATASET
 
-	if [ ! -z ${1+is_set} ]; then
+	if [ ! -z ${1:+is_set} ]; then
 		args=",$1"
 	fi
 	zfs list -r -d1 -oname$args $dataset/jails | tail -n+3 | sed "s@$dataset/jails/@@"
@@ -108,6 +147,10 @@ get_jail_names()
 
 needsroot()
 {
+	if [ ${NOROOT:-0} -eq 1 ]; then
+		return
+	fi
+
 	if [ $(id -u) -ne 0 ]; then
 		stderr "Command requires root privileges"
 		exit
@@ -128,8 +171,12 @@ warn()
 
 checkrc()
 {
-	rc=-1
-	eval "$*;rc=$?"
+	if [ ${VERBOSE:-0} -eq 1 ]; then
+		echo $*
+	fi
+
+	$*
+	local rc=$?
 	if [ $rc -ne 0 ]; then
 		stderr Error running $*
 		exit $rc
@@ -207,9 +254,9 @@ is_running()
 
 	jls -j $jail >/dev/null 2>&1
 	if [ $? -eq 0 ]; then
-		echo 1
+		return 0
 	else
-		echo 0
+		return 1
 	fi
 }
 

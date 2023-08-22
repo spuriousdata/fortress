@@ -1,3 +1,5 @@
 *.conf
 *.fstab
 jib
+staticfiles.py
+src/cleanup.sh
