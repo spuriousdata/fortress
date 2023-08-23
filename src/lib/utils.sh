@@ -100,7 +100,6 @@ create_jailconf()
 		x=$(( $x+1 ))
 	done
 
-	echo Preparing EXTRA_JAIL_CONF
 	EJC=$(echo $EXTRA_JAIL_CONF | stripall | indent | pr -to8 -i8)
 
 	cat > $mountpoint/jail.conf <<EOF
@@ -121,7 +120,7 @@ $name {
 	exec.start = "/bin/sh /etc/rc";
 	exec.stop = "/bin/sh /etc/rc.shutdown";
 	exec.consolelog = "/var/log/jail_\${name}_console.log";
-	exec.prestart += "$JIB addm \${name} $PUBLIC_IFACE";
+	exec.prestart += "$JIB addm \${name} $PUBLIC_IFACE >/dev/null";
 	exec.poststop += "$JIB destroy \${name}";
 
 $EJC
