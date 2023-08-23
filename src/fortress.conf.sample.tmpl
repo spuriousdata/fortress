@@ -2,8 +2,6 @@
 
 # Any of these can be overridden in /usr/local/etc/fortress/$jailname.conf
 
-# uncomment to automatically regenerate the fstab and jail.conf file when starting the jail
-#AUTOGEN=1
 RELEASE=13.2-RELEASE
 DATASET=zroot/fortress
 #PUBLIC_IFACE="jailiface otheriface"
@@ -14,6 +12,9 @@ PUBLIC_IFACE=jailiface
 
 # diable warnings
 #NOWARN=1
+
+# Automatically regenerate the fstab and jail.conf file when starting the jail
+AUTOGEN=1
 
 DOMAIN=jails.example.org
 
@@ -30,6 +31,8 @@ DOMAIN=jails.example.org
 #EOM
 #)
 
+## DO NOT CHANGE THIS 
+##  unless you really know what you're doing
 MOUNT=$(cat <<EOM
 bin
 boot

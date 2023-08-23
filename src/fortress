@@ -324,9 +324,11 @@ stop()
 
 	local name=${1:?jail name is required}
 
-	MP=$(mp $DATASET/jails/$name)
-	echo Stopping $name...
-	jail -qrf $MP/jail.conf $name
+	if is_running $name; then
+		MP=$(mp $DATASET/jails/$name)
+		echo Stopping $name...
+		jail -qrf $MP/jail.conf $name
+	fi
 }
 
 restart()
@@ -391,9 +393,24 @@ upgrade()
 		setup
 
 		if confirm_prompt false "Upgrade all jails to this new version?"; then
-			restart $name
-			_etcupdate true $name
-			restart $name
+			get_jail_names | while read -r jail; do
+				local MP=$(mp $DATASET/jails/$jail)
+				local r=1
+				if is_running $jail; then
+					r=0
+				fi
+
+				stop $jail
+				rewrite_fstab $jail
+				mount_jail $MP/root
+				_etcupdate true $jail
+				umount_jail $MP/root
+
+				if $r; then
+					start $jail
+				fi
+
+			done
 		else
 			stderr "You _must_ run \`$0 etcupdate jail1 jail2 ... jailN\` manually now for any jail that will be upgraded"
 		fi
