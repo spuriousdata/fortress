@@ -395,9 +395,9 @@ upgrade()
 		if confirm_prompt false "Upgrade all jails to this new version?"; then
 			get_jail_names | while read -r jail; do
 				local MP=$(mp $DATASET/jails/$jail)
-				local r=1
+				local was_running=no
 				if is_running $jail; then
-					r=0
+					was_running=yes
 				fi
 
 				stop $jail
@@ -406,7 +406,7 @@ upgrade()
 				_etcupdate true $jail
 				umount_jail $MP/root
 
-				if $r; then
+				if [ $was_running = "yes" ]; then
 					start $jail
 				fi
 
