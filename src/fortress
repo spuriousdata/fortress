@@ -11,26 +11,10 @@ PV=$(which pv)
 INSTALL_CONFIG=/usr/local/etc/fortress.conf
 CONFIG=$INSTALL_CONFIG
 
-if [ "x$1" = "x-f" ]; then
-	CONFIG=$2
-	shift; shift
-fi
+TRUE=0
+FALSE=1
 
-if [ "x$1" = "x-X" ]; then
-	set -x
-	shift
-fi
 
-	
-if [ -f $CONFIG ]; then
-	. $CONFIG
-else
-	# stderr() is not defined yet, so we can't call it
-	echo "No configuration found. Copy $INSTALL_CONFIG.sample to $INSTALL_CONFIG and edit it before running fortress" >&2
-	exit 1
-fi
-
-. $LIBDIR/utils.sh
 stderr()
 {
 	echo $@ >&2
@@ -467,6 +451,42 @@ stopall()
 
 main()
 {
+	while getopts ':f:X' c; do
+		case $c in
+			f)
+				CONFIG="$OPTARG"
+				;;
+			X)
+				set -x
+				;;
+			:)
+				stderr dunno how we got here
+				exit 2
+				;;
+			\?)
+				if [ "$OPTARG" = "?" ]; then
+					usage
+					exit 0
+				else
+					printf 'fortress: Uknown flag %s\n' "$OPTARG" >&2
+					usage
+					exit 2
+				fi
+				;;
+		esac
+	done
+	shift $((${OPTIND} - 1))
+
+	if [ -f $CONFIG ]; then
+		. $CONFIG
+	else
+		# stderr() is not defined yet, so we can't call it
+		echo "No configuration found. Copy $INSTALL_CONFIG.sample to $INSTALL_CONFIG and edit it before running fortress" >&2
+		exit 1
+	fi
+
+	. $LIBDIR/utils.sh
+
 	if setupcomplete; then
 		case $1 in 
 			setup)
