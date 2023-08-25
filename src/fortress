@@ -253,6 +253,29 @@ destroy()
 
 list()
 {
+	local _r=$FALSE
+	local _s=$FALSE
+
+	while getopts 'rs' c; do
+		case $c in
+			r)
+				_r=$TRUE
+				;;
+			s)
+				_s=$TRUE
+				;;
+		esac
+	done
+	shift $((${OPTIND} - 1))
+
+	if [ $_r -eq $TRUE -a $_s -eq $TRUE ]; then
+		stderr "-r and -s are mutually exclusive"
+		stderr "fortress list [-r|-s]"
+		stderr "fortress list -r #list only running"
+		stderr "fortress list -s #list only stopped"
+		exit 2
+	fi
+
 	(echo JID IP NAME MOUNTPOINT RUNNING
 	get_jail_names mountpoint | while read -r name mp; do
 		JID=$(jls -j $name -qn jid 2>/dev/null | cut -f2 -d=)
@@ -264,13 +287,24 @@ list()
 				IP=${_ip:-"??.??.??.??"}
 			fi
 			RUNNING=yes
+
+			if [ $_r -eq $TRUE ]; then
+				echo $JID $IP $name $mp $RUNNING
+			fi
 		else
 			_ip=$(ip_from_rc_conf $name $mp)
 			IP=${_ip:-n/a}
 			RUNNING=no
 			JID=n/a
+			
+			if [ $_s -eq $TRUE ]; then
+				echo $JID $IP $name $mp $RUNNING
+			fi
 		fi
-		echo $JID $IP $name $mp $RUNNING
+
+		if [ $_r -eq $FALSE -a $_s -eq $FALSE ]; then
+			echo $JID $IP $name $mp $RUNNING
+		fi
 	done) | column -t
 }
 
