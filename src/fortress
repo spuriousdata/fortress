@@ -31,6 +31,10 @@ else
 fi
 
 . $LIBDIR/utils.sh
+stderr()
+{
+	echo $@ >&2
+}
 
 usage()
 {

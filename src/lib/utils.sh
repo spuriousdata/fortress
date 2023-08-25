@@ -157,11 +157,6 @@ needsroot()
 	fi
 }
 
-stderr()
-{
-	echo $@ >&2
-}
-
 warn()
 {
 	if [ ${NOWARN:-0} -ne 1 ]; then
