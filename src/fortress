@@ -181,16 +181,16 @@ EOF
 	fi
 	
 	echo Extracting etcupdate-$RELEASE.tbz
-	mount_jail $MP/root
+	mount_jail "$MP/root"
 	chroot $MP/root etcupdate extract -t /etcupdate/etcupdate-$RELEASE.tbz
-	umount_jail $MP/root
+	umount_jail "$MP/root"
 
 	echo Writing jail.conf
-	create_jailconf $name $MP 
+	create_jailconf "$name" "$MP"
 
 
 	echo Writing fstab
-	create_fstab $name $RMP $MP
+	create_fstab "$name" "$RMP" "$MP"
 
 	echo Jail created
 }
@@ -203,7 +203,7 @@ rewrite_jail_conf()
 	MP=$(mp $DATASET/jails/$name)
 
 	echo Writing jail.conf
-	create_jailconf $name $MP 
+	create_jailconf "$name" "$MP"
 }
 
 rewrite_fstab()
@@ -214,8 +214,7 @@ rewrite_fstab()
 	local RMP=$(mp $DATASET/release/$RELEASE/root)
 	local MP=$(mp $DATASET/jails/$name)
 
-	echo Writing fstab
-	create_fstab $name $RMP $MP
+	create_fstab "$name" "$RMP" "$MP"
 }
 
 destroy()
