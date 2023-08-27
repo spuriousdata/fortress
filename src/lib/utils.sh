@@ -66,7 +66,16 @@ create_fstab()
 	local EXTRA=""
 
 	if [ -f $localfstab ]; then
-		EXTRA=$(cat $localfstab | stripall | awk -v pfx=$MP/root '!/^#XX/{d=$2; if (substr(d, 1, 1) == "/") { d = substr(d, 2, length(d)-1) }; print $1 " " pfx "/" d " " $3 " " $4 " " $5 " " $6}')
+		EXTRA=$(cat $localfstab | stripall | awk -v pfx=$MP/root '
+		!/^#XX/{
+			d=$2
+
+			# strip initial /
+			if (substr(d, 1, 1) == "/") {
+				d = substr(d, 2, length(d)-1)
+			}
+			print $1 " " pfx "/" d " " $3 " " $4 " " $5 " " $6
+		}')
 	fi
 
 	load_local_overrides $name
