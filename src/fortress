@@ -11,26 +11,14 @@ PV=$(which pv)
 INSTALL_CONFIG=/usr/local/etc/fortress.conf
 CONFIG=$INSTALL_CONFIG
 
-if [ "x$1" = "x-f" ]; then
-	CONFIG=$2
-	shift; shift
-fi
+TRUE=0
+FALSE=1
 
-if [ "x$1" = "x-X" ]; then
-	set -x
-	shift
-fi
 
-	
-if [ -f $CONFIG ]; then
-	. $CONFIG
-else
-	# stderr() is not defined yet, so we can't call it
-	echo "No configuration found. Copy $INSTALL_CONFIG.sample to $INSTALL_CONFIG and edit it before running fortress" >&2
-	exit 1
-fi
-
-. $LIBDIR/utils.sh
+stderr()
+{
+	echo $@ >&2
+}
 
 usage()
 {
@@ -193,16 +181,16 @@ EOF
 	fi
 	
 	echo Extracting etcupdate-$RELEASE.tbz
-	mount_jail $MP/root
+	mount_jail "$MP/root"
 	chroot $MP/root etcupdate extract -t /etcupdate/etcupdate-$RELEASE.tbz
-	umount_jail $MP/root
+	umount_jail "$MP/root"
 
 	echo Writing jail.conf
-	create_jailconf $name $MP 
+	create_jailconf "$name" "$MP"
 
 
 	echo Writing fstab
-	create_fstab $name $RMP $MP
+	create_fstab "$name" "$RMP" "$MP"
 
 	echo Jail created
 }
@@ -215,7 +203,7 @@ rewrite_jail_conf()
 	MP=$(mp $DATASET/jails/$name)
 
 	echo Writing jail.conf
-	create_jailconf $name $MP 
+	create_jailconf "$name" "$MP"
 }
 
 rewrite_fstab()
@@ -226,8 +214,7 @@ rewrite_fstab()
 	local RMP=$(mp $DATASET/release/$RELEASE/root)
 	local MP=$(mp $DATASET/jails/$name)
 
-	echo Writing fstab
-	create_fstab $name $RMP $MP
+	create_fstab "$name" "$RMP" "$MP"
 }
 
 destroy()
@@ -265,6 +252,29 @@ destroy()
 
 list()
 {
+	local _r=$FALSE
+	local _s=$FALSE
+
+	while getopts 'rs' c; do
+		case $c in
+			r)
+				_r=$TRUE
+				;;
+			s)
+				_s=$TRUE
+				;;
+		esac
+	done
+	shift $((${OPTIND} - 1))
+
+	if [ $_r -eq $TRUE -a $_s -eq $TRUE ]; then
+		stderr "-r and -s are mutually exclusive"
+		stderr "fortress list [-r|-s]"
+		stderr "fortress list -r #list only running"
+		stderr "fortress list -s #list only stopped"
+		exit 2
+	fi
+
 	(echo JID IP NAME MOUNTPOINT RUNNING
 	get_jail_names mountpoint | while read -r name mp; do
 		JID=$(jls -j $name -qn jid 2>/dev/null | cut -f2 -d=)
@@ -276,13 +286,24 @@ list()
 				IP=${_ip:-"??.??.??.??"}
 			fi
 			RUNNING=yes
+
+			if [ $_r -eq $TRUE ]; then
+				echo $JID $IP $name $mp $RUNNING
+			fi
 		else
 			_ip=$(ip_from_rc_conf $name $mp)
 			IP=${_ip:-n/a}
 			RUNNING=no
 			JID=n/a
+			
+			if [ $_s -eq $TRUE ]; then
+				echo $JID $IP $name $mp $RUNNING
+			fi
 		fi
-		echo $JID $IP $name $mp $RUNNING
+
+		if [ $_r -eq $FALSE -a $_s -eq $FALSE ]; then
+			echo $JID $IP $name $mp $RUNNING
+		fi
 	done) | column -t
 }
 
@@ -463,6 +484,42 @@ stopall()
 
 main()
 {
+	while getopts ':f:X' c; do
+		case $c in
+			f)
+				CONFIG="$OPTARG"
+				;;
+			X)
+				set -x
+				;;
+			:)
+				stderr dunno how we got here
+				exit 2
+				;;
+			\?)
+				if [ "$OPTARG" = "?" ]; then
+					usage
+					exit 0
+				else
+					printf 'fortress: Uknown flag %s\n' "$OPTARG" >&2
+					usage
+					exit 2
+				fi
+				;;
+		esac
+	done
+	shift $((${OPTIND} - 1))
+
+	if [ -f $CONFIG ]; then
+		. $CONFIG
+	else
+		# stderr() is not defined yet, so we can't call it
+		echo "No configuration found. Copy $INSTALL_CONFIG.sample to $INSTALL_CONFIG and edit it before running fortress" >&2
+		exit 1
+	fi
+
+	. $LIBDIR/utils.sh
+
 	if setupcomplete; then
 		case $1 in 
 			setup)
