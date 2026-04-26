@@ -310,7 +310,8 @@ list()
 needsjib()
 {
 	if [ ! -x $JIB ]; then
-		stderr "fortress requires $JIB to exist and be executable. If jib exists in a different location, set it in $CONFIG"
+		stderr "fortress requires $JIB to exist and be executable. If jib"
+		stderr "exists in a different location, set it in $CONFIG"
 		exit 1
 	fi
 }

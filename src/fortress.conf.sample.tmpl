@@ -2,13 +2,16 @@
 
 # Any of these can be overridden in /usr/local/etc/fortress/$jailname.conf
 
-RELEASE=13.2-RELEASE
+RELEASE=15.0-RELEASE
 DATASET=zroot/fortress
 #PUBLIC_IFACE="jailiface otheriface"
 PUBLIC_IFACE=jailiface
 
 
 {{JIB}}
+
+# Tell jib to use this specfic bridge. Leave blank if you don't know what that means. 
+JIB_BRIDGE=""
 
 # diable warnings
 #NOWARN=1

@@ -97,9 +97,15 @@ create_jailconf()
 
 	load_local_overrides $name
 
+	local jib_bridge=""
 	local pairs=""
 	local x=0
 	local i=""
+
+	if [ "x${JIB_BRIDGE}" != "x" ]; then
+		jib_bridge="-b ${JIB_BRIDGE} "
+	fi
+
 	for i in $PUBLIC_IFACE; do
 		if [ -z ${pairs:+is_set} ]; then
 			pairs="e${x}b_\$name"
@@ -129,7 +135,7 @@ $name {
 	exec.start = "/bin/sh /etc/rc";
 	exec.stop = "/bin/sh /etc/rc.shutdown";
 	exec.consolelog = "/var/log/jail_\${name}_console.log";
-	exec.prestart += "$JIB addm \${name} $PUBLIC_IFACE >/dev/null";
+	exec.prestart += "$JIB ${jib_bridge} addm \${name} $PUBLIC_IFACE >/dev/null";
 	exec.poststop += "$JIB destroy \${name}";
 
 $EJC

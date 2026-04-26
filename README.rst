@@ -156,18 +156,11 @@ jails::
     12.1-RELEASE-p2:
     ...
     Installing updates... done.
-    Updates installed. Restart jails then run 'fortress.sh etcupdate jail1 jail2 ... jailN'
-    
-Then run::
-
-    root@jailhost:~ # fortress etcupdate test1
-    Warnings:
-        Needs update: /etc/localtime (required manual update via tzsetup(8))
-    etcupdate complete. Restart jails a final time
+    Updates installed. Restart jails.
     
 Then::
 
-    root@jailhost:~ # fortress restart test1
+    root@jailhost:~ # fortress restartall
     
 Additional Configuration
 ************************
