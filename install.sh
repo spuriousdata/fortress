@@ -9,6 +9,7 @@
 D=$(dirname $(realpath $0))
 INSTALLPATH=${STAGEPREFIX}${PREFIX}
 JIBINSTALLPATH=$(dirname ${STAGEPREFIX}${JIBPATH})
+SCRIPTINSTALLPATH=${STAGEPREFIX}${SCRIPTDIR}
 
 
 if [ ! -d $JIBINSTALLPATH ]; then
@@ -32,8 +33,8 @@ T=$(mktemp) || exit 1
 install -m555 $D/src/fortress  $INSTALLPATH/sbin/fortress
 install -m555 $JIBSRC $JIBINSTALLPATH
 install -m644 $D/src/lib/* $INSTALLPATH/lib/fortress
+install -m555 $D/src/lib/mkepair.sh $SCRIPTINSTALLPATH/mkepair.sh
 sed -e "s@{{JIB}}@JIB=$JIBPATH@" < $D/src/fortress.conf.sample.tmpl > $T
-install -m555 -lsa $D/src/lib/mkepair.sh $SCRIPTDIR/mkepair.sh
 install -m644 $T $INSTALLPATH/etc/fortress.conf.sample
 install -m644 $D/src/SAMPLE.conf $INSTALLPATH/etc/fortress/SAMPLE.conf
 install -m644 $D/src/SAMPLE.fstab $INSTALLPATH/etc/fortress/SAMPLE.fstab
