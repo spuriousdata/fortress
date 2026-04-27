@@ -4,6 +4,8 @@
 : ${LIBDIR:=/usr/local/lib/fortress}
 : ${LOCALCONF_DIR:=/usr/local/etc/fortress}
 : ${MOUNTPOINT:=/fortress}
+: ${NETWORKING:=jib}
+
 
 SETS="base.txz lib32.txz src.txz"
 

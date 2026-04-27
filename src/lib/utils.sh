@@ -121,6 +121,20 @@ create_jailconf()
 
 	EJC=$(echo $EXTRA_JAIL_CONF | stripall | indent | pr -to8 -i8)
 
+	if [ "x${NETWORKING}" = "xjib" ]; then
+		CONFIGEND=$(<<EOM
+	exec.prestart += "${JAIL_PRESTART}${JIB} addm ${jib_bridge} \${name} $PUBLIC_IFACE >/dev/null";
+	exec.poststop += "${JAIL_POSTSTOP}${JIB} destroy \${name}";
+EOM
+)
+	else
+		CONFIGEND=$(<<EOM
+	exec.prestart += "${JAIL_PRESTART}${NET_PRESTART}";
+	exec.poststop += "${JAIL_POSTSTOP}${NET_POSTSTOP}";
+EOM
+)
+	fi
+
 	cat > $mountpoint/jail.conf <<EOF
 $name {
 	host.hostname = "\$name.$DOMAIN";
@@ -139,8 +153,7 @@ $name {
 	exec.start = "/bin/sh /etc/rc";
 	exec.stop = "/bin/sh /etc/rc.shutdown";
 	exec.consolelog = "/var/log/jail_\${name}_console.log";
-	exec.prestart += "$JIB addm ${jib_bridge} \${name} $PUBLIC_IFACE >/dev/null";
-	exec.poststop += "$JIB destroy \${name}";
+	$CONFIGEND
 
 $EJC
 }

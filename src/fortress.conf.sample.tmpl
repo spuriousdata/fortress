@@ -5,14 +5,15 @@
 RELEASE=15.0-RELEASE
 DATASET=zroot/fortress
 MOUNTPOINT=/fortress
+NETWORKING=jib
 #PUBLIC_IFACE="jailiface otheriface"
 PUBLIC_IFACE=jailiface
 
 
 {{JIB}}
 
-# Tell jib to use this specfic bridge. Leave blank if you don't know what that means. 
-JIB_BRIDGE=""
+# Tell jib to use this specific bridge. Leave blank if you don't know what that means. 
+JIB_BRIDGE=
 
 # diable warnings
 #NOWARN=1
@@ -21,6 +22,17 @@ JIB_BRIDGE=""
 AUTOGEN=1
 
 DOMAIN=jails.example.org
+
+# add prestart/poststop commands to jail.conf -- MUST end with semicolon ';'
+# These will always get added, even if using jib
+JAIL_PRESTART=
+JAIL_POSTSTOP=
+
+# if NETWORKING is unset, then run these in exec.prestart/exec.poststop
+# These will ONLY run if not using jib
+PRESTART=
+POSTSTOP=
+
 
 #RESOLV_CONF=$(cat <<EOM
 #nameserver 192.168.12.1
