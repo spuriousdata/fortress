@@ -33,9 +33,10 @@ JAIL_POSTSTOP=
 NET_PRESTART=
 NET_POSTSTOP=
 
-## Set this if NETWORKING is unset
-#CUSTOM_IFACE=epa_\${name}
+## Set this if NETWORKING is unset. Don't forget to change the interface in RC_CONF
+#CUSTOM_IFACE=epb_\${name}
 
+ROOT_SHELL=/bin/sh
 
 #RESOLV_CONF=$(cat <<EOM
 #nameserver 192.168.12.1

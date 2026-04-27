@@ -116,9 +116,6 @@ create_jailconf()
 		x=$(( $x+1 ))
 	done
 
-	if [ "x${pairs}" = "x" ]; then
-		pairs=$CUSTOM_IFACE
-	fi
 
 	EJC=$(echo $EXTRA_JAIL_CONF | stripall | indent | pr -to8 -i8)
 
@@ -134,6 +131,7 @@ EOM
 	exec.poststop += "${JAIL_POSTSTOP}${NET_POSTSTOP}";
 EOM
 )
+		pairs=$CUSTOM_IFACE
 	fi
 
 	cat > $mountpoint/jail.conf <<EOF

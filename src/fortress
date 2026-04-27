@@ -5,6 +5,7 @@
 : ${LOCALCONF_DIR:=/usr/local/etc/fortress}
 : ${MOUNTPOINT:=/fortress}
 : ${NETWORKING:=jib}
+: ${ROOT_SHELL:=/bin/sh}
 
 
 SETS="base.txz lib32.txz src.txz"
@@ -584,7 +585,7 @@ main()
 				if ! is_running $1; then
 					start $1
 				fi
-				jexec -l $1 /bin/csh
+				jexec -l $1 $ROOT_SHELL
 				;;
 			rjc)
 				shift
