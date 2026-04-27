@@ -97,6 +97,7 @@ create_jailconf()
 
 	load_local_overrides $name
 
+	local configend=""
 	local jib_bridge=""
 	local pairs=""
 	local x=0
@@ -122,13 +123,13 @@ create_jailconf()
 	EJC=$(echo $EXTRA_JAIL_CONF | stripall | indent | pr -to8 -i8)
 
 	if [ "x${NETWORKING}" = "xjib" ]; then
-		CONFIGEND=$(<<EOM
+		configend=$(cat <<EOM
 	exec.prestart += "${JAIL_PRESTART}${JIB} addm ${jib_bridge} \${name} $PUBLIC_IFACE >/dev/null";
 	exec.poststop += "${JAIL_POSTSTOP}${JIB} destroy \${name}";
 EOM
 )
 	else
-		CONFIGEND=$(<<EOM
+		configend=$(cat <<EOM
 	exec.prestart += "${JAIL_PRESTART}${NET_PRESTART}";
 	exec.poststop += "${JAIL_POSTSTOP}${NET_POSTSTOP}";
 EOM
@@ -153,7 +154,7 @@ $name {
 	exec.start = "/bin/sh /etc/rc";
 	exec.stop = "/bin/sh /etc/rc.shutdown";
 	exec.consolelog = "/var/log/jail_\${name}_console.log";
-	$CONFIGEND
+	$configend
 
 $EJC
 }
