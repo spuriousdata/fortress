@@ -117,7 +117,7 @@ create_jailconf()
 	done
 
 	if [ "x${pairs}" = "x" ]; then
-		pairs="e0b_\$name"
+		pairs=$CUSTOM_IFACE
 	fi
 
 	EJC=$(echo $EXTRA_JAIL_CONF | stripall | indent | pr -to8 -i8)
@@ -154,7 +154,7 @@ $name {
 	exec.start = "/bin/sh /etc/rc";
 	exec.stop = "/bin/sh /etc/rc.shutdown";
 	exec.consolelog = "/var/log/jail_\${name}_console.log";
-	$configend
+$configend
 
 $EJC
 }
