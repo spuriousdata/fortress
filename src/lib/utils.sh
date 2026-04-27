@@ -139,7 +139,7 @@ $name {
 	exec.start = "/bin/sh /etc/rc";
 	exec.stop = "/bin/sh /etc/rc.shutdown";
 	exec.consolelog = "/var/log/jail_\${name}_console.log";
-	exec.prestart += "$JIB ${jib_bridge} addm \${name} $PUBLIC_IFACE >/dev/null";
+	exec.prestart += "$JIB addm ${jib_bridge} \${name} $PUBLIC_IFACE >/dev/null";
 	exec.poststop += "$JIB destroy \${name}";
 
 $EJC
