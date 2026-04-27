@@ -33,7 +33,7 @@ T=$(mktemp) || exit 1
 install -m555 $D/src/fortress  $INSTALLPATH/sbin/fortress
 install -m555 $JIBSRC $JIBINSTALLPATH
 install -m644 $D/src/lib/* $INSTALLPATH/lib/fortress
-install -m555 $D/src/lib/mkepair.sh $SCRIPTINSTALLPATH/mkepair.sh
+install -m555 $D/src/mkepair.sh $SCRIPTINSTALLPATH/mkepair.sh
 sed -e "s@{{JIB}}@JIB=$JIBPATH@" < $D/src/fortress.conf.sample.tmpl > $T
 install -m644 $T $INSTALLPATH/etc/fortress.conf.sample
 install -m644 $D/src/SAMPLE.conf $INSTALLPATH/etc/fortress/SAMPLE.conf
